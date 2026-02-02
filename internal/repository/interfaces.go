@@ -14,6 +14,7 @@ type RaceRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Race, error)
 	GetUpcoming(ctx context.Context, limit int) ([]*models.Race, error)
 	GetByDateRange(ctx context.Context, start, end time.Time) ([]*models.Race, error)
+	GetByTrackAndDate(ctx context.Context, track string, date time.Time) ([]*models.Race, error)
 	Update(ctx context.Context, race *models.Race) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }

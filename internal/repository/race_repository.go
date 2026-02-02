@@ -127,6 +127,42 @@ func (r *PostgresRaceRepository) GetByDateRange(ctx context.Context, start, end 
 	return races, rows.Err()
 }
 
+// GetByTrackAndDate retrieves races by track and date for deduplication
+func (r *PostgresRaceRepository) GetByTrackAndDate(ctx context.Context, track string, date time.Time) ([]*models.Race, error) {
+	// Find races on the same track on the same day (within 24 hours)
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	query := `
+		SELECT id, scheduled_start, actual_start, track, race_type, distance, grade,
+		       conditions, status, created_at, updated_at
+		FROM races
+		WHERE track = $1 AND scheduled_start >= $2 AND scheduled_start < $3
+		ORDER BY scheduled_start ASC
+	`
+
+	rows, err := r.db.GetPool().Query(ctx, query, track, startOfDay, endOfDay)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query races by track and date: %w", err)
+	}
+	defer rows.Close()
+
+	var races []*models.Race
+	for rows.Next() {
+		race := &models.Race{}
+		err := rows.Scan(
+			&race.ID, &race.ScheduledStart, &race.ActualStart, &race.Track, &race.RaceType,
+			&race.Distance, &race.Grade, &race.Conditions, &race.Status, &race.CreatedAt, &race.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan race: %w", err)
+		}
+		races = append(races, race)
+	}
+
+	return races, rows.Err()
+}
+
 // Update updates an existing race
 func (r *PostgresRaceRepository) Update(ctx context.Context, race *models.Race) error {
 	query := `

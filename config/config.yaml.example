@@ -34,6 +34,14 @@ app:
   name: clever-better
   environment: development  # development, staging, production
   log_level: info          # debug, info, warn, error
+  rate_limit:
+    requests_per_second: 50
+    burst_size: 100
+  scheduler:
+    historical_sync_enabled: true
+    historical_sync_cron_expression: "0 2 * * *"  # Daily at 2 AM UTC
+    live_polling_enabled: true
+    live_polling_interval_seconds: 5
 
 # =============================================================================
 # Database Configuration
@@ -51,47 +59,40 @@ database:
   statement_cache_mode: describe  # disable, describe, prepare (for parameterized queries)
 
 # =============================================================================
-# Betfair API Configuration
+# Data Sources Configuration
 # =============================================================================
-betfair:
-  username: ${BETFAIR_USERNAME}
-  password: ${BETFAIR_PASSWORD}
-  app_key: ${BETFAIR_APP_KEY}
-  cert_file: /path/to/betfair/cert.pem
-  key_file: /path/to/betfair/key.pem
+data_sources:
+  betfair:
+    enabled: true
+    base_url: https://api.betfair.com
+    auth:
+      api_key: ${BETFAIR_APP_KEY}
+      session_token: ${BETFAIR_SESSION_TOKEN}
+      username: ${BETFAIR_USERNAME}
+      password: ${BETFAIR_PASSWORD}
+      cert_file: ${BETFAIR_CERT_FILE}
+      key_file: ${BETFAIR_KEY_FILE}
+    rate_limit:
+      requests_per_second: 30
+      burst_size: 50
+    data_path: ./data/betfair/
 
-# =============================================================================
-# Trading Configuration
-# =============================================================================
-trading:
-  enabled: true
-  markets:
-    - "WIN"
-    - "PLACE"
-  max_stake: 50.0
-  min_odds: 1.5
-  max_odds: 10.0
-  commission_percentage: 5.0
-  betting_type: "exchange"  # exchange or fixed-odds
+  racing_post:
+    enabled: false
+    base_url: https://www.racingpost.com/api
+    auth:
+      api_key: ${RACING_POST_API_KEY}
+    rate_limit:
+      requests_per_second: 10
+      burst_size: 20
+    data_path: ./data/racing_post/
 
-# =============================================================================
-# ML Configuration
-# =============================================================================
-ml:
-  enabled: true
-  model_path: ./ml-service/models
-  confidence_threshold: 0.7
-  update_frequency: 3600  # seconds
-
-# =============================================================================
-# Backtesting Configuration
-# =============================================================================
-backtesting:
-  data_source: database  # database or csv
-  csv_path: ./data/historical/
-  start_date: "2023-01-01"
-  end_date: "2023-12-31"
-  initial_balance: 10000.0
+  csv:
+    enabled: false
+    data_path: ./data/csv/
+    rate_limit:
+      requests_per_second: 50
+      burst_size: 100
 
 # =============================================================================
 # AWS Configuration (Optional)
