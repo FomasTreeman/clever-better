@@ -17,6 +17,7 @@ type Repositories struct {
 	Prediction          PredictionRepository
 	StrategyPerformance StrategyPerformanceRepository
 	RaceResult          RaceResultRepository
+	BacktestResult      BacktestResultRepository
 }
 
 // NewRepositories creates and returns all repository implementations
@@ -35,5 +36,6 @@ func NewRepositories(db *database.DB) (*Repositories, error) {
 		Prediction:          NewPostgresPredictionRepository(db),
 		StrategyPerformance: NewPostgresStrategyPerformanceRepository(db),
 		RaceResult:          NewPostgresRaceResultRepository(db),
+		BacktestResult:      NewPostgresBacktestResultRepository(db),
 	}, nil
 }

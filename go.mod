@@ -13,4 +13,5 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.5
 	golang.org/x/time v0.5.0
 	github.com/gorilla/websocket v1.5.1
+	github.com/sirupsen/logrus v1.9.3
 )

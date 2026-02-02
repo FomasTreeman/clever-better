@@ -166,6 +166,18 @@ py-lint: ## Run Python linters
 	cd ml-service && flake8 app/
 	cd ml-service && mypy app/
 
+.PHONY: proto-gen
+proto-gen: ## Generate gRPC code for ML service
+	cd ml-service && python -m grpc_tools.protoc -I proto --python_out=app/generated --grpc_python_out=app/generated proto/ml_service.proto
+
+.PHONY: ml-test
+ml-test: ## Run ML service tests
+	$(MAKE) py-test
+
+.PHONY: ml-lint
+ml-lint: ## Run ML service linters
+	$(MAKE) py-lint
+
 .PHONY: py-fmt
 py-fmt: ## Format Python code
 	cd ml-service && black app/ tests/
@@ -315,7 +327,7 @@ run-data-ingestion: ## Run data ingestion service
 
 .PHONY: run-ml
 run-ml: ## Run ML service locally
-	cd ml-service && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd ml-service && (python -m app.grpc_server & uvicorn app.main:app --reload --host 0.0.0.0 --port 8000)
 
 # =============================================================================
 # Development Tools

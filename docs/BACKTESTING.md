@@ -20,6 +20,28 @@ Backtesting is the process of evaluating trading strategies using historical dat
 2. **Parameter Optimization**: Find optimal strategy parameters
 3. **Risk Assessment**: Understand potential drawdowns and tail risks
 
+## Implementation Details
+
+The backtesting framework is implemented in the `internal/backtest` package and provides three modes:
+
+- **Historical Replay**: Chronological replay of odds and race results
+- **Monte Carlo**: Probabilistic resampling of outcomes
+- **Walk-Forward**: Rolling train/validation/test windows
+
+For architecture and ML export format details, see:
+
+- [docs/BACKTESTING_IMPLEMENTATION.md](BACKTESTING_IMPLEMENTATION.md)
+- [docs/ML_INTEGRATION.md](ML_INTEGRATION.md)
+
+### CLI Usage
+
+```bash
+./bin/backtest --mode historical --strategy simple_value
+./bin/backtest --mode monte-carlo --strategy simple_value
+./bin/backtest --mode walk-forward --strategy simple_value
+./bin/backtest --mode all --strategy simple_value --ml-export --output ./output/backtest_results.json
+```
+
 ## Backtesting Philosophy
 
 ### Principles
@@ -421,6 +443,31 @@ def apply_transaction_costs(trade, execution_price):
 ```
 
 ## Reporting
+
+## Implementation Details
+
+The backtesting engine uses repository interfaces for all data access and enforces temporal safety by ensuring odds snapshots are never accessed after the race start time. Commission and slippage are applied during simulated execution, and results are aggregated into a composite score for ML consumption.
+
+### CLI Usage
+
+Run the backtest CLI with flags:
+
+- `--config`: path to config file
+- `--strategy`: strategy name (default: simple_value)
+- `--start-date`, `--end-date`: override date range
+- `--mode`: historical, monte-carlo, walk-forward, all
+- `--output`: output path for JSON results
+- `--ml-export`: enable ML export
+
+Example:
+
+```
+./bin/backtest --mode all --strategy simple_value --ml-export --output ./output/backtest_results.json
+```
+
+### ML Export
+
+When ML export is enabled, the CLI writes a JSON payload with metrics, bet history, equity curve, and walk-forward windows. This output is designed for direct ingestion by the ML service.
 
 ### Backtest Report Structure
 

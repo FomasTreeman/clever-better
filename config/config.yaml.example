@@ -215,6 +215,12 @@ backtest:
   initial_bankroll: 1000.00
   monte_carlo_iterations: 1000
   walk_forward_windows: 12
+  commission_rate: 0.05
+  slippage_ticks: 1
+  min_liquidity: 5.0
+  output_path: "./output/backtest_results.json"
+  ml_export_enabled: false
+  risk_free_rate: 0.0
 
 # =============================================================================
 # Data Ingestion Configuration

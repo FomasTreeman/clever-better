@@ -75,6 +75,12 @@ type BacktestConfig struct {
 	InitialBankroll       float64 `mapstructure:"initial_bankroll" validate:"required,gt=0"`
 	MonteCarloIterations  int     `mapstructure:"monte_carlo_iterations" validate:"required,gt=0"`
 	WalkForwardWindows    int     `mapstructure:"walk_forward_windows" validate:"required,gt=0"`
+	CommissionRate        float64 `mapstructure:"commission_rate" validate:"required,gte=0,lte=0.1"`
+	SlippageTicks         int     `mapstructure:"slippage_ticks" validate:"required,gte=0"`
+	MinLiquidity          float64 `mapstructure:"min_liquidity" validate:"required,gte=0"`
+	OutputPath            string  `mapstructure:"output_path" validate:"required"`
+	MLExportEnabled       bool    `mapstructure:"ml_export_enabled"`
+	RiskFreeRate          float64 `mapstructure:"risk_free_rate" validate:"gte=0"`
 }
 
 // DataIngestionConfig represents data ingestion configuration

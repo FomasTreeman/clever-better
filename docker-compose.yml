@@ -25,15 +25,21 @@ services:
     container_name: clever-better-ml
     ports:
       - "8000:8000"
+      - "50051:50051"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@timescaledb:5432/clever_better
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@timescaledb:5432/clever_better
       ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      GRPC_PORT: 50051
     depends_on:
       timescaledb:
         condition: service_healthy
     volumes:
       - ./ml-service/app:/app/app
       - ./ml-service/models:/app/models
+      - ./ml-service/proto:/app/proto
 
   # Uncomment when bot Dockerfile is ready
   # bot:

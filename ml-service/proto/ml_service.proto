@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package mlservice;
+
+service MLService {
+  rpc GetPrediction (PredictionRequest) returns (PredictionResponse);
+  rpc EvaluateStrategy (StrategyRequest) returns (StrategyResponse);
+  rpc GetFeatures (FeatureRequest) returns (FeatureResponse);
+  rpc HealthCheck (Empty) returns (HealthStatus);
+}
+
+message PredictionRequest {
+  string race_id = 1;
+  string strategy_id = 2;
+  repeated double features = 3;
+}
+
+message PredictionResponse {
+  string race_id = 1;
+  double predicted_probability = 2;
+  double confidence = 3;
+}
+
+message StrategyRequest {
+  string strategy_id = 1;
+}
+
+message StrategyResponse {
+  string strategy_id = 1;
+  double composite_score = 2;
+  string recommendation = 3;
+}
+
+message FeatureRequest {
+  string backtest_result_id = 1;
+}
+
+message FeatureResponse {
+  map<string, double> features = 1;
+}
+
+message HealthStatus {
+  string status = 1;
+}
+
+message Empty {}

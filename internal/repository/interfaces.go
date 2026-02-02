@@ -82,3 +82,11 @@ type StrategyPerformanceRepository interface {
 	GetByStrategyID(ctx context.Context, strategyID uuid.UUID, start, end time.Time) ([]*models.StrategyPerformance, error)
 	GetDailyRollup(ctx context.Context, strategyID uuid.UUID, start, end time.Time) ([]*models.StrategyPerformance, error)
 }
+
+// BacktestResultRepository defines backtest result persistence
+type BacktestResultRepository interface {
+	SaveResult(ctx context.Context, result *models.BacktestResult) error
+	GetByStrategyID(ctx context.Context, strategyID uuid.UUID) ([]*models.BacktestResult, error)
+	GetLatest(ctx context.Context, limit int) ([]*models.BacktestResult, error)
+	GetByDateRange(ctx context.Context, start, end time.Time) ([]*models.BacktestResult, error)
+}
