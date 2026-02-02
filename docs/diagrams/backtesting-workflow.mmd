@@ -1,0 +1,117 @@
+%%{init: {'theme': 'base'}}%%
+
+flowchart TB
+    subgraph "Configuration"
+        Config[Backtest Config<br/>dates, capital, params]
+        Strategy[Strategy Selection<br/>ML ensemble, rules]
+    end
+
+    subgraph "Data Loading"
+        LoadRaces[Load Races<br/>for date range]
+        LoadOdds[Load Odds<br/>time series]
+        LoadResults[Load Results<br/>race outcomes]
+        DataCache[(Data Cache<br/>in memory)]
+    end
+
+    subgraph "Market Replay"
+        TimeIndex[Build Time Index<br/>chronological events]
+        EventLoop[Event Loop<br/>process each timestamp]
+        MarketState[Update Market State<br/>current odds, volume]
+    end
+
+    subgraph "Strategy Evaluation"
+        FeatureCalc[Calculate Features<br/>from current state]
+        MLPrediction[ML Prediction<br/>get probabilities]
+        SignalGen[Generate Signals<br/>identify opportunities]
+        RiskCheck[Risk Check<br/>exposure limits]
+    end
+
+    subgraph "Trade Simulation"
+        StakeCalc[Calculate Stake<br/>Kelly criterion]
+        SimExecution[Simulate Execution<br/>at market price]
+        UpdatePortfolio[Update Portfolio<br/>track positions]
+        LogTrade[Log Trade<br/>record details]
+    end
+
+    subgraph "Race Settlement"
+        MatchResult[Match Result<br/>to positions]
+        CalcPL[Calculate P&L<br/>win/loss]
+        UpdateCapital[Update Capital<br/>new balance]
+    end
+
+    subgraph "Analysis"
+        subgraph "Performance Metrics"
+            ROI[ROI<br/>total return]
+            Sharpe[Sharpe Ratio<br/>risk-adjusted]
+            Drawdown[Max Drawdown<br/>peak decline]
+            WinRate[Win Rate<br/>% profitable]
+        end
+
+        subgraph "Statistical Tests"
+            MonteCarloSim[Monte Carlo<br/>outcome distribution]
+            Bootstrap[Bootstrap<br/>confidence intervals]
+            Significance[Statistical<br/>significance test]
+        end
+
+        subgraph "Reporting"
+            EquityCurve[Equity Curve<br/>value over time]
+            TradeLog[Trade Log<br/>all transactions]
+            Summary[Summary Report<br/>key metrics]
+        end
+    end
+
+    %% Configuration flow
+    Config --> LoadRaces
+    Strategy --> SignalGen
+
+    %% Data loading
+    LoadRaces --> DataCache
+    LoadOdds --> DataCache
+    LoadResults --> DataCache
+    DataCache --> TimeIndex
+
+    %% Replay loop
+    TimeIndex --> EventLoop
+    EventLoop --> MarketState
+    MarketState --> FeatureCalc
+
+    %% Strategy evaluation
+    FeatureCalc --> MLPrediction
+    MLPrediction --> SignalGen
+    SignalGen --> RiskCheck
+
+    %% Trade simulation
+    RiskCheck -->|Signal passes| StakeCalc
+    StakeCalc --> SimExecution
+    SimExecution --> UpdatePortfolio
+    UpdatePortfolio --> LogTrade
+
+    %% Continue loop
+    LogTrade --> EventLoop
+    RiskCheck -->|No signal| EventLoop
+
+    %% Settlement
+    EventLoop -->|Race complete| MatchResult
+    MatchResult --> CalcPL
+    CalcPL --> UpdateCapital
+    UpdateCapital --> EventLoop
+
+    %% Analysis
+    EventLoop -->|End of data| ROI
+    EventLoop -->|End of data| Sharpe
+    EventLoop -->|End of data| Drawdown
+    EventLoop -->|End of data| WinRate
+
+    ROI --> MonteCarloSim
+    Sharpe --> Bootstrap
+    WinRate --> Significance
+
+    MonteCarloSim --> EquityCurve
+    Bootstrap --> Summary
+    Significance --> Summary
+    LogTrade --> TradeLog
+
+    %% Styling
+    style DataCache fill:#d9ead3,stroke:#6aa84f
+    style MLPrediction fill:#a4c2f4,stroke:#3c78d8
+    style Summary fill:#f9cb9c,stroke:#e69138

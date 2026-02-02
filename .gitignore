@@ -1,0 +1,119 @@
+# =============================================================================
+# Configuration Files
+# =============================================================================
+
+config/config.yaml  # Never commit actual configuration with credentials
+!config/config.yaml.example
+!config/config.development.yaml
+!config/config.production.yaml
+
+# =============================================================================
+# =============================================================================
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test coverage
+*.out
+coverage.html
+coverage.txt
+
+# Go workspace
+go.work
+go.work.sum
+
+# =============================================================================
+# Python
+# =============================================================================
+
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# ML models and data
+*.h5
+*.pkl
+*.joblib
+*.ckpt
+*.pth
+ml-service/models/trained/
+ml-service/data/
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# =============================================================================
+# Terraform
+# =============================================================================
+
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# =============================================================================
+# Secrets and Credentials
+# =============================================================================
+
+*.pem
+*.key
+*.crt
+.env
+.env.local
+.env.*.local
+secrets.yaml
+secrets.yml
+credentials.json
+config/secrets/
+
+# =============================================================================
+# IDE and Editor
+# =============================================================================
+
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =============================================================================
+# Build and Dependencies
+# =============================================================================
+
+vendor/
+node_modules/
+build/
+out/
+
+# =============================================================================
+# Logs and Temporary Files
+# =============================================================================
+
+*.log
+logs/
+tmp/
+temp/
+*.tmp

@@ -1,0 +1,72 @@
+# Configuration file with environment variable placeholders
+app:
+  name: clever-better
+  environment: development
+  log_level: info
+
+database:
+  host: localhost
+  port: 5432
+  name: clever_better_test
+  user: postgres
+  password: ${TEST_DB_PASSWORD}
+  ssl_mode: disable
+  max_connections: 25
+  max_idle_connections: 5
+
+betfair:
+  api_url: https://api.betfair.com/exchange/betting/rest/v1.0
+  stream_url: stream-api.betfair.com:443
+  app_key: test_app_key
+  username: test_username
+  password: test_password
+  cert_file: /path/to/cert.pem
+  key_file: /path/to/key.pem
+
+ml_service:
+  url: http://localhost:8000
+  grpc_address: localhost:50051
+  timeout_seconds: 30
+  retry_attempts: 3
+
+trading:
+  max_stake_per_bet: 10.00
+  max_daily_loss: 100.00
+  max_exposure: 500.00
+  min_confidence_threshold: 0.65
+  min_expected_value: 0.02
+  markets:
+    - WIN
+    - PLACE
+  pre_race_window_minutes: 30
+  min_time_to_start_seconds: 60
+
+backtest:
+  start_date: "2023-01-01"
+  end_date: "2024-01-01"
+  initial_bankroll: 1000.00
+  monte_carlo_iterations: 1000
+  walk_forward_windows: 12
+
+data_ingestion:
+  sources:
+    - name: betfair_historical
+      enabled: true
+      batch_size: 1000
+    - name: racing_post
+      enabled: false
+      api_key: test_key
+  schedule:
+    historical_sync: "0 2 * * *"
+    live_polling_interval_seconds: 5
+
+metrics:
+  enabled: true
+  port: 9090
+  path: /metrics
+
+features:
+  live_trading_enabled: false
+  paper_trading_enabled: true
+  ml_predictions_enabled: true
+  advanced_analytics_enabled: false

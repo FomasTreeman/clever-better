@@ -1,0 +1,103 @@
+%%{init: {'theme': 'base'}}%%
+
+flowchart TB
+    subgraph "Data Sources"
+        BetfairHist[Betfair Historical<br/>Past races & odds]
+        RacingAPI[Racing Data API<br/>Form & track data]
+        BetfairStream[Betfair Stream<br/>Live market data]
+    end
+
+    subgraph "Data Ingestion Pipeline"
+        Fetch[Fetch Data<br/>Download/API calls]
+        Validate[Validate<br/>Schema & rules]
+        Transform[Transform<br/>Normalize & enrich]
+        Load[Load<br/>Batch insert]
+        DLQ[Dead Letter Queue<br/>Failed records]
+    end
+
+    subgraph "Storage Layer"
+        TimescaleDB[(TimescaleDB)]
+        subgraph "Hypertables"
+            Races[races]
+            Runners[runners]
+            OddsSnapshots[odds_snapshots]
+            Trades[trades]
+            Predictions[predictions]
+        end
+    end
+
+    subgraph "Processing Pipelines"
+        subgraph "ML Training"
+            FeatureGen[Feature<br/>Generation]
+            LabelGen[Label<br/>Generation]
+            Training[Model<br/>Training]
+            ModelReg[Model<br/>Registry]
+        end
+
+        subgraph "Live Trading"
+            MarketAnalysis[Market<br/>Analysis]
+            Prediction[Prediction<br/>Service]
+            Decision[Trading<br/>Decision]
+            Execution[Order<br/>Execution]
+        end
+
+        subgraph "Backtesting"
+            HistLoad[Load<br/>History]
+            Replay[Market<br/>Replay]
+            SimTrade[Simulate<br/>Trades]
+            Metrics[Calculate<br/>Metrics]
+        end
+    end
+
+    subgraph "Output"
+        BetfairOrder[Betfair<br/>Order API]
+        Reports[Performance<br/>Reports]
+        Dashboard[Monitoring<br/>Dashboard]
+    end
+
+    %% Ingestion flow
+    BetfairHist --> Fetch
+    RacingAPI --> Fetch
+    Fetch --> Validate
+    Validate -->|Valid| Transform
+    Validate -->|Invalid| DLQ
+    Transform --> Load
+    Load --> Races
+    Load --> Runners
+    Load --> OddsSnapshots
+
+    %% Live data flow
+    BetfairStream --> MarketAnalysis
+    MarketAnalysis --> OddsSnapshots
+    MarketAnalysis --> Prediction
+    Prediction --> Decision
+    Decision -->|Signal| Execution
+    Execution --> BetfairOrder
+    Execution --> Trades
+
+    %% ML Training flow
+    Races --> FeatureGen
+    Runners --> FeatureGen
+    OddsSnapshots --> FeatureGen
+    FeatureGen --> LabelGen
+    LabelGen --> Training
+    Training --> ModelReg
+
+    %% Backtesting flow
+    Races --> HistLoad
+    OddsSnapshots --> HistLoad
+    HistLoad --> Replay
+    Replay --> SimTrade
+    SimTrade --> Metrics
+    Metrics --> Reports
+
+    %% Monitoring
+    Trades --> Dashboard
+    Predictions --> Dashboard
+
+    %% Styling
+    style TimescaleDB fill:#d9ead3,stroke:#6aa84f
+    style BetfairStream fill:#f9cb9c,stroke:#e69138
+    style BetfairHist fill:#f9cb9c,stroke:#e69138
+    style RacingAPI fill:#f9cb9c,stroke:#e69138
+    style BetfairOrder fill:#f9cb9c,stroke:#e69138

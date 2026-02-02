@@ -1,0 +1,44 @@
+# Invalid Configuration File - Missing Required Fields
+app:
+  name: clever-better
+  # Missing environment field
+  log_level: info
+
+database:
+  # Missing required fields
+  host: localhost
+
+betfair:
+  api_url: not_a_url
+  # Missing other required fields
+
+ml_service:
+  url: http://localhost:8000
+  grpc_address: localhost:50051
+
+trading:
+  max_stake_per_bet: 10.00
+  max_daily_loss: 100.00
+  max_exposure: 500.00
+  # Missing markets array
+
+backtest:
+  start_date: "2024-01-01"
+  end_date: "2023-01-01"  # End date before start date
+  initial_bankroll: 1000.00
+  monte_carlo_iterations: 1000
+  walk_forward_windows: 12
+
+data_ingestion:
+  sources: []  # Empty sources array
+  schedule:
+    historical_sync: "0 2 * * *"
+    live_polling_interval_seconds: 5
+
+metrics:
+  enabled: true
+  port: 9090
+
+features:
+  live_trading_enabled: false
+  paper_trading_enabled: false

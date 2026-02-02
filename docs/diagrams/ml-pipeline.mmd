@@ -1,0 +1,148 @@
+%%{init: {'theme': 'base'}}%%
+
+flowchart TB
+    subgraph "Data Sources"
+        RaceData[(Race Data)]
+        OddsData[(Odds History)]
+        ResultsData[(Race Results)]
+    end
+
+    subgraph "Feature Engineering"
+        subgraph "Race Features"
+            TrackFeatures[Track<br/>characteristics]
+            TimeFeatures[Time/day<br/>features]
+            ConditionFeatures[Weather<br/>conditions]
+        end
+
+        subgraph "Runner Features"
+            FormFeatures[Recent form<br/>statistics]
+            TrackRecord[Track/distance<br/>record]
+            TrapStats[Trap<br/>statistics]
+        end
+
+        subgraph "Market Features"
+            OddsFeatures[Price<br/>features]
+            VolumeFeatures[Volume<br/>features]
+            MovementFeatures[Odds<br/>movement]
+        end
+
+        FeatureStore[(Feature Store)]
+    end
+
+    subgraph "Label Generation"
+        WinLabel[Win Label<br/>1 if won, 0 otherwise]
+        PlaceLabel[Place Label<br/>1 if top 3, 0 otherwise]
+        ValueLabel[Value Label<br/>1 if +EV bet, 0 otherwise]
+    end
+
+    subgraph "Model Training"
+        subgraph "Base Models"
+            XGBoost[XGBoost]
+            LightGBM[LightGBM]
+            NeuralNet[Neural Network]
+            LogReg[Logistic Regression]
+        end
+
+        Ensemble[Stacking<br/>Ensemble]
+
+        subgraph "Validation"
+            CrossVal[Cross Validation]
+            WalkForward[Walk-Forward<br/>Analysis]
+            MonteCarlo[Monte Carlo<br/>Simulation]
+        end
+    end
+
+    subgraph "Calibration"
+        Isotonic[Isotonic<br/>Regression]
+        CalibCheck[Calibration<br/>Check]
+    end
+
+    subgraph "Model Registry"
+        ModelArtifact[(Model<br/>Artifacts)]
+        ModelMetadata[(Model<br/>Metadata)]
+        ModelVersion[Version<br/>Control]
+    end
+
+    subgraph "Inference Service"
+        ModelLoader[Model<br/>Loader]
+        FeatureCompute[Feature<br/>Computation]
+        Predictor[Prediction<br/>Engine]
+        Confidence[Confidence<br/>Scoring]
+    end
+
+    subgraph "Output"
+        PredictionAPI[Prediction<br/>API]
+        Monitoring[Model<br/>Monitoring]
+    end
+
+    %% Data to Features
+    RaceData --> TrackFeatures
+    RaceData --> TimeFeatures
+    RaceData --> ConditionFeatures
+    RaceData --> FormFeatures
+    RaceData --> TrackRecord
+    RaceData --> TrapStats
+    OddsData --> OddsFeatures
+    OddsData --> VolumeFeatures
+    OddsData --> MovementFeatures
+
+    %% Features to Store
+    TrackFeatures --> FeatureStore
+    TimeFeatures --> FeatureStore
+    ConditionFeatures --> FeatureStore
+    FormFeatures --> FeatureStore
+    TrackRecord --> FeatureStore
+    TrapStats --> FeatureStore
+    OddsFeatures --> FeatureStore
+    VolumeFeatures --> FeatureStore
+    MovementFeatures --> FeatureStore
+
+    %% Labels
+    ResultsData --> WinLabel
+    ResultsData --> PlaceLabel
+    OddsData --> ValueLabel
+    ResultsData --> ValueLabel
+
+    %% Training
+    FeatureStore --> XGBoost
+    FeatureStore --> LightGBM
+    FeatureStore --> NeuralNet
+    FeatureStore --> LogReg
+    WinLabel --> XGBoost
+    WinLabel --> LightGBM
+    WinLabel --> NeuralNet
+    WinLabel --> LogReg
+
+    XGBoost --> Ensemble
+    LightGBM --> Ensemble
+    NeuralNet --> Ensemble
+    LogReg --> Ensemble
+
+    Ensemble --> CrossVal
+    Ensemble --> WalkForward
+    CrossVal --> MonteCarlo
+
+    %% Calibration
+    MonteCarlo --> Isotonic
+    Isotonic --> CalibCheck
+
+    %% Registry
+    CalibCheck --> ModelArtifact
+    CalibCheck --> ModelMetadata
+    ModelMetadata --> ModelVersion
+
+    %% Inference
+    ModelArtifact --> ModelLoader
+    ModelLoader --> Predictor
+    FeatureStore --> FeatureCompute
+    FeatureCompute --> Predictor
+    Predictor --> Confidence
+    Confidence --> PredictionAPI
+    Confidence --> Monitoring
+
+    %% Styling
+    style FeatureStore fill:#d9ead3,stroke:#6aa84f
+    style ModelArtifact fill:#d9ead3,stroke:#6aa84f
+    style RaceData fill:#a4c2f4,stroke:#3c78d8
+    style OddsData fill:#a4c2f4,stroke:#3c78d8
+    style ResultsData fill:#a4c2f4,stroke:#3c78d8

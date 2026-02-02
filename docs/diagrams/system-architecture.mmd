@@ -1,0 +1,84 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a86e8', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2a56a8', 'lineColor': '#666', 'secondaryColor': '#f9cb9c', 'tertiaryColor': '#d9ead3'}}}%%
+
+graph TB
+    subgraph "Client Layer"
+        CLI[CLI Tools<br/>bot, backtest, data-ingestion]
+    end
+
+    subgraph "Go Backend Services"
+        subgraph "Entry Points"
+            Bot[Trading Bot<br/>cmd/bot]
+            Backtest[Backtesting Engine<br/>cmd/backtest]
+            DataIngest[Data Ingestion<br/>cmd/data-ingestion]
+        end
+
+        subgraph "Core Packages"
+            BetfairClient[Betfair Client<br/>internal/betfair]
+            Strategy[Strategy Engine<br/>internal/strategy]
+            BacktestEngine[Backtest Engine<br/>internal/backtest]
+            MLClient[ML Client<br/>internal/ml]
+            Repository[Repository<br/>internal/repository]
+            Config[Config<br/>internal/config]
+        end
+    end
+
+    subgraph "Python ML Service"
+        MLService[FastAPI Server<br/>ml-service/app]
+        FeatureEng[Feature Engineering<br/>ml-service/app/ml]
+        ModelInference[Model Inference<br/>ml-service/app/ml]
+        Training[Training Pipeline<br/>ml-service/app/ml]
+    end
+
+    subgraph "Data Layer"
+        TimescaleDB[(TimescaleDB<br/>PostgreSQL + Time-series)]
+        ModelStorage[(Model Storage<br/>S3 / Local)]
+    end
+
+    subgraph "External Services"
+        BetfairAPI[Betfair Exchange API<br/>REST + Streaming]
+        DataSources[Racing Data Sources<br/>Form Data, Results]
+    end
+
+    %% Client connections
+    CLI --> Bot
+    CLI --> Backtest
+    CLI --> DataIngest
+
+    %% Bot connections
+    Bot --> BetfairClient
+    Bot --> Strategy
+    Bot --> MLClient
+    Bot --> Repository
+    Bot --> Config
+
+    %% Backtest connections
+    Backtest --> BacktestEngine
+    BacktestEngine --> Strategy
+    BacktestEngine --> MLClient
+    BacktestEngine --> Repository
+
+    %% Data Ingestion connections
+    DataIngest --> Repository
+    DataIngest --> DataSources
+
+    %% External API
+    BetfairClient --> BetfairAPI
+
+    %% ML Service connections
+    MLClient -->|gRPC/REST| MLService
+    MLService --> FeatureEng
+    MLService --> ModelInference
+    MLService --> Training
+    Training --> ModelStorage
+
+    %% Database connections
+    Repository --> TimescaleDB
+    FeatureEng --> TimescaleDB
+
+    %% Styling
+    classDef external fill:#f9cb9c,stroke:#e69138
+    classDef database fill:#d9ead3,stroke:#6aa84f
+    classDef python fill:#a4c2f4,stroke:#3c78d8
+    class BetfairAPI,DataSources external
+    class TimescaleDB,ModelStorage database
+    class MLService,FeatureEng,ModelInference,Training python

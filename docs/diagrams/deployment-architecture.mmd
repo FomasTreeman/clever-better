@@ -1,0 +1,106 @@
+%%{init: {'theme': 'base'}}%%
+
+graph TB
+    Internet((Internet))
+
+    subgraph "AWS Cloud"
+        subgraph "Security Layer"
+            WAF[AWS WAF<br/>Web Application Firewall]
+            GuardDuty[GuardDuty<br/>Threat Detection]
+            CloudTrail[CloudTrail<br/>API Audit]
+        end
+
+        subgraph "VPC 10.0.0.0/16"
+            subgraph "Public Subnets"
+                subgraph "AZ-a Public"
+                    IGW[Internet<br/>Gateway]
+                    NAT1[NAT Gateway<br/>AZ-a]
+                end
+                subgraph "AZ-b Public"
+                    NAT2[NAT Gateway<br/>AZ-b]
+                end
+                ALB[Application<br/>Load Balancer]
+            end
+
+            subgraph "Private Subnets - Application"
+                subgraph "AZ-a App"
+                    ECS1[ECS Fargate<br/>Trading Bot]
+                    ECS2[ECS Fargate<br/>ML Service]
+                end
+                subgraph "AZ-b App"
+                    ECS3[ECS Fargate<br/>Trading Bot]
+                    ECS4[ECS Fargate<br/>ML Service]
+                end
+            end
+
+            subgraph "Private Subnets - Data"
+                subgraph "AZ-a Data"
+                    RDS1[(RDS Primary<br/>TimescaleDB)]
+                end
+                subgraph "AZ-b Data"
+                    RDS2[(RDS Standby<br/>TimescaleDB)]
+                end
+            end
+        end
+
+        subgraph "Supporting Services"
+            ECR[ECR<br/>Container Registry]
+            SM[Secrets Manager<br/>Credentials]
+            S3[S3<br/>Model Storage]
+            CW[CloudWatch<br/>Monitoring]
+        end
+    end
+
+    subgraph "External"
+        BetfairAPI[Betfair<br/>Exchange API]
+    end
+
+    %% Internet flow
+    Internet --> WAF
+    WAF --> ALB
+    ALB --> ECS1
+    ALB --> ECS2
+    ALB --> ECS3
+    ALB --> ECS4
+
+    %% NAT Gateway flow
+    ECS1 --> NAT1
+    ECS2 --> NAT1
+    ECS3 --> NAT2
+    ECS4 --> NAT2
+    NAT1 --> IGW
+    NAT2 --> IGW
+    IGW --> Internet
+
+    %% Betfair connection
+    NAT1 --> BetfairAPI
+    NAT2 --> BetfairAPI
+
+    %% Database connections
+    ECS1 --> RDS1
+    ECS2 --> RDS1
+    ECS3 --> RDS1
+    ECS4 --> RDS1
+    RDS1 -.->|Replication| RDS2
+
+    %% Supporting services
+    ECS1 --> SM
+    ECS2 --> SM
+    ECS1 --> S3
+    ECS2 --> S3
+    ECS1 --> CW
+    ECS2 --> CW
+    RDS1 --> CW
+
+    %% Security monitoring
+    CloudTrail -.-> CW
+    GuardDuty -.-> CW
+
+    %% Styling
+    style Internet fill:#f9cb9c,stroke:#e69138
+    style BetfairAPI fill:#f9cb9c,stroke:#e69138
+    style RDS1 fill:#d9ead3,stroke:#6aa84f
+    style RDS2 fill:#d9ead3,stroke:#6aa84f
+    style WAF fill:#ea9999,stroke:#cc0000
+    style GuardDuty fill:#ea9999,stroke:#cc0000
+    style CloudTrail fill:#ea9999,stroke:#cc0000

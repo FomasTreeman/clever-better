@@ -1,0 +1,190 @@
+# Clever Better Configuration Template
+# Copy this file to config.yaml and fill in your values
+# NEVER commit config.yaml with real credentials
+#
+# Configuration loading priority:
+# 1. Hardcoded defaults (in LoadWithDefaults)
+# 2. Configuration file (config/config.yaml) with ${VAR} placeholder expansion
+# 3. Environment variables (CLEVER_BETTER_*)
+# 4. AWS Secrets Manager (if AWS_SECRETS_ENABLED=true)
+#
+# Environment Variable Placeholders:
+# - Use ${VAR_NAME} syntax in this file to expand shell environment variables
+# - Example: password: ${DB_PASSWORD} → expands to the value of $DB_PASSWORD
+# - If variable not set, placeholder remains literal: ${UNSET_VAR}
+# - Expansion happens before validation and before AWS Secrets Manager overlay
+#
+# Environment Variable Mapping:
+# - Field paths use dots (database.host)
+# - Environment variables use underscores and uppercase (CLEVER_BETTER_DATABASE_HOST)
+# - Prefix all variables with CLEVER_BETTER_
+# - These override both YAML values and placeholder expansions
+#
+# AWS Secrets Manager:
+# - Set AWS_SECRETS_ENABLED=true to enable
+# - Set AWS_REGION and AWS_SECRET_NAME environment variables
+# - Supports: database_password, betfair_app_key, betfair_username, betfair_password, racing_post_api_key
+#
+# For more information, see docs/CONFIGURATION.md
+
+# =============================================================================
+# Application Settings
+# =============================================================================
+app:
+  name: clever-better
+  environment: development  # development, staging, production
+  log_level: info          # debug, info, warn, error
+
+# =============================================================================
+# Database Configuration
+# =============================================================================
+database:
+  host: localhost
+  port: 5432
+  name: clever_better
+  user: postgres
+  password: ${DB_PASSWORD}  # Set via environment variable or AWS Secrets Manager
+  ssl_mode: disable         # disable, require, verify-full (require SSL in production)
+  max_connections: 25
+  max_idle_connections: 5
+  connection_max_lifetime: 5m
+  statement_cache_mode: describe  # disable, describe, prepare (for parameterized queries)
+
+# =============================================================================
+# Betfair API Configuration
+# =============================================================================
+betfair:
+  username: ${BETFAIR_USERNAME}
+  password: ${BETFAIR_PASSWORD}
+  app_key: ${BETFAIR_APP_KEY}
+  cert_file: /path/to/betfair/cert.pem
+  key_file: /path/to/betfair/key.pem
+
+# =============================================================================
+# Trading Configuration
+# =============================================================================
+trading:
+  enabled: true
+  markets:
+    - "WIN"
+    - "PLACE"
+  max_stake: 50.0
+  min_odds: 1.5
+  max_odds: 10.0
+  commission_percentage: 5.0
+  betting_type: "exchange"  # exchange or fixed-odds
+
+# =============================================================================
+# ML Configuration
+# =============================================================================
+ml:
+  enabled: true
+  model_path: ./ml-service/models
+  confidence_threshold: 0.7
+  update_frequency: 3600  # seconds
+
+# =============================================================================
+# Backtesting Configuration
+# =============================================================================
+backtesting:
+  data_source: database  # database or csv
+  csv_path: ./data/historical/
+  start_date: "2023-01-01"
+  end_date: "2023-12-31"
+  initial_balance: 10000.0
+
+# =============================================================================
+# AWS Configuration (Optional)
+# =============================================================================
+aws:
+  region: us-east-1
+  secrets_enabled: false
+  secret_name: clever-better/secrets  # Name in AWS Secrets Manager
+
+# =============================================================================
+# Betfair API Configuration
+# =============================================================================
+betfair:
+  api_url: https://api.betfair.com/exchange/betting/rest/v1.0
+  stream_url: stream-api.betfair.com:443
+  app_key: ${BETFAIR_APP_KEY}
+  username: ${BETFAIR_USERNAME}
+  password: ${BETFAIR_PASSWORD}
+  cert_file: ${BETFAIR_CERT_FILE}
+  key_file: ${BETFAIR_KEY_FILE}
+
+# =============================================================================
+# ML Service Configuration
+# =============================================================================
+ml_service:
+  url: http://localhost:8000
+  grpc_address: localhost:50051
+  timeout_seconds: 30
+  retry_attempts: 3
+
+# =============================================================================
+# Trading Configuration
+# =============================================================================
+trading:
+  # Risk Management
+  max_stake_per_bet: 10.00
+  max_daily_loss: 100.00
+  max_exposure: 500.00
+
+  # Strategy Settings
+  min_confidence_threshold: 0.65
+  min_expected_value: 0.02
+
+  # Market Selection
+  markets:
+    - WIN
+    - PLACE
+
+  # Time Settings
+  pre_race_window_minutes: 30
+  min_time_to_start_seconds: 60
+
+# =============================================================================
+# Backtesting Configuration
+# =============================================================================
+backtest:
+  start_date: "2023-01-01"
+  end_date: "2024-01-01"
+  initial_bankroll: 1000.00
+  monte_carlo_iterations: 1000
+  walk_forward_windows: 12
+
+# =============================================================================
+# Data Ingestion Configuration
+# =============================================================================
+data_ingestion:
+  # Data Sources
+  sources:
+    - name: betfair_historical
+      enabled: true
+      batch_size: 1000
+    - name: racing_post
+      enabled: false
+      api_key: ${RACING_POST_API_KEY}  # Set via environment variable or AWS Secrets Manager
+
+  # Schedule
+  schedule:
+    historical_sync: "0 2 * * *"  # Daily at 2 AM (cron format)
+    live_polling_interval_seconds: 5
+
+# =============================================================================
+# Metrics and Monitoring
+# =============================================================================
+metrics:
+  enabled: true
+  port: 9090
+  path: /metrics
+
+# =============================================================================
+# Feature Flags
+# =============================================================================
+features:
+  live_trading_enabled: false
+  paper_trading_enabled: true
+  ml_predictions_enabled: true
+  advanced_analytics_enabled: false
