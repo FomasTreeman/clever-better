@@ -106,13 +106,74 @@ aws:
 # Betfair API Configuration
 # =============================================================================
 betfair:
-  api_url: https://api.betfair.com/exchange/betting/rest/v1.0
-  stream_url: stream-api.betfair.com:443
-  app_key: ${BETFAIR_APP_KEY}
-  username: ${BETFAIR_USERNAME}
-  password: ${BETFAIR_PASSWORD}
-  cert_file: ${BETFAIR_CERT_FILE}
-  key_file: ${BETFAIR_KEY_FILE}
+  # Certificate authentication
+  certificate:
+    certPath: ${BETFAIR_CERT_PATH}  # Path to client certificate (PEM format)
+    # Certificate is automatically reloaded on login attempts
+  
+  # API Configuration
+  api:
+    appKey: ${BETFAIR_APP_KEY}
+    username: ${BETFAIR_USERNAME}
+    baseUrl: "https://api.betfair.com/exchange/betting/json-rpc/v1/"
+    requestTimeout: "30s"
+    
+    # Rate limiting (requests per second)
+    rateLimit: 50
+    
+    # Retry configuration
+    maxRetries: 3
+    retryBackoff: "100ms"
+  
+  # Streaming Configuration
+  stream:
+    url: "stream-api.betfair.com:443"
+    heartbeatMs: 5000
+    conflateMs: 1000  # Conflate updates to 1 second
+    
+    # Reconnection settings
+    maxReconnectAttempts: 10
+    initialReconnectDelay: "1s"
+    maxReconnectDelay: "30s"
+  
+  # Market Data Collection
+  marketData:
+    # Buffer settings for batch inserts
+    bufferSize: 1000
+    flushIntervalSeconds: 5
+    
+    # Market collection settings
+    eventTypeId: 4339  # Greyhound racing
+    marketTypes:
+      - WIN
+      - PLACE
+    
+    # Time range for market queries
+    inPlayDelay: "2m"
+    marketWindow: "7d"
+  
+  # Betting Configuration
+  betting:
+    # Stake limits
+    minStake: 0.50
+    maxStake: 500.00
+    defaultOrderType: "LAPSE"  # LAPSE, PERSIST, or EXECUTE_LAPSE
+    
+    # Commission (percentage)
+    commission: 5.0
+    
+    # Order monitoring
+    pollIntervalSeconds: 30
+    maxOrderAge: "24h"
+  
+  # Error Handling
+  errorHandling:
+    # Log level for API errors
+    logLevel: "INFO"
+    
+    # Maximum errors before circuit breaker opens
+    circuitBreakerThreshold: 10
+    circuitBreakerTimeout: "30s"
 
 # =============================================================================
 # ML Service Configuration

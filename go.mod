@@ -12,5 +12,5 @@ require (
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.5
 	golang.org/x/time v0.5.0
+	github.com/gorilla/websocket v1.5.1
 )
-
