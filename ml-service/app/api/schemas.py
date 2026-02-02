@@ -62,3 +62,66 @@ class StrategyRankingResponse(BaseModel):
 class HealthCheckResponse(BaseModel):
     status: str
     database: bool
+
+
+# ML-specific schemas
+class TrainingJobRequest(BaseModel):
+    model_type: str = Field(description="Model type: rl_agent, classifier, or ensemble")
+    config: Optional[Dict[str, Any]] = Field(default=None)
+    hyperparameter_search: bool = Field(default=False)
+    n_trials: int = Field(default=50, ge=10, le=200)
+
+
+class TrainingJobResponse(BaseModel):
+    job_id: str
+    status: str
+    message: str
+
+
+class TrainingStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    model_type: str
+    created_at: str
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    metrics: Optional[Dict[str, float]] = None
+    model_version: Optional[str] = None
+    error: Optional[str] = None
+
+
+class PredictionRequest(BaseModel):
+    features: Dict[str, float] = Field(description="Feature vector for prediction")
+
+
+class PredictionResponse(BaseModel):
+    win_probability: float
+    place_probability: float
+    confidence: float
+    recommendation: str
+
+
+class StrategyRecommendationRequest(BaseModel):
+    race_features: Dict[str, float]
+    bankroll: float
+    risk_level: str = Field(default="medium", pattern="^(low|medium|high)$")
+
+
+class StrategyRecommendationResponse(BaseModel):
+    recommended_action: str
+    stake_size: float
+    expected_value: float
+    confidence: float
+
+
+class ModelMetrics(BaseModel):
+    model_name: str
+    version: str
+    accuracy: Optional[float] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+    f1_score: Optional[float] = None
+    roc_auc: Optional[float] = None
+    brier_score: Optional[float] = None
+    sharpe_ratio: Optional[float] = None
+    roi: Optional[float] = None

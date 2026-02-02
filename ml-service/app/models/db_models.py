@@ -50,3 +50,26 @@ class BacktestResult(Base):
         Index("idx_backtest_results_strategy_id", "strategy_id", "run_date"),
         Index("idx_backtest_results_composite_score", "composite_score"),
     )
+
+
+class ModelMetadata(Base):
+    """Track ML model training runs and versions."""
+    __tablename__ = "model_metadata"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    model_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    model_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    mlflow_run_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    stage: Mapped[str] = mapped_column(String(32), nullable=False, default="None")
+    metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    hyperparameters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    feature_names: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    training_dataset_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index("idx_model_metadata_name_version", "model_name", "version"),
+        Index("idx_model_metadata_stage", "stage"),
+    )

@@ -23,6 +23,17 @@ class Settings(BaseSettings):
     db_pool_min_size: int = Field(1, alias="DB_POOL_MIN_SIZE")
     db_pool_max_size: int = Field(10, alias="DB_POOL_MAX_SIZE")
 
+    # ML-specific settings
+    mlflow_tracking_uri: str = Field("http://localhost:5000", alias="MLFLOW_TRACKING_URI")
+    mlflow_experiment_name: str = Field("clever-better", alias="MLFLOW_EXPERIMENT_NAME")
+    model_cache_dir: str = Field("/tmp/model_cache", alias="MODEL_CACHE_DIR")
+    max_training_workers: int = Field(2, alias="MAX_TRAINING_WORKERS")
+    prediction_timeout_seconds: int = Field(30, alias="PREDICTION_TIMEOUT_SECONDS")
+    
+    # Monitoring settings
+    enable_metrics: bool = Field(True, alias="ENABLE_METRICS")
+    enable_structured_logging: bool = Field(True, alias="ENABLE_STRUCTURED_LOGGING")
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value):

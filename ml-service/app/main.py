@@ -11,6 +11,11 @@ from app.api.routes import router
 from app.config import get_settings
 from app.database import database_health_check
 from app.utils.logging import configure_logging, get_logger
+from app.api.training_routes import router as training_router
+from app.api.prediction_routes import router as prediction_router
+from app.api.visualization_routes import router as visualization_router
+from app.monitoring import ml_logger
+import mlflow
 
 settings = get_settings()
 configure_logging(settings.log_level)
@@ -31,6 +36,9 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(training_router, prefix="/api/v1")
+app.include_router(prediction_router, prefix="/api/v1")
+app.include_router(visualization_router, prefix="/api/v1")
 
 
 @app.get("/health")
@@ -62,6 +70,11 @@ async def log_requests(request: Request, call_next):
 @app.on_event("startup")
 async def on_startup() -> None:
     logger.info("ml_service_starting")
+    
+    # Initialize MLflow
+    mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+    mlflow.set_experiment(settings.mlflow_experiment_name)
+    ml_logger.logger.info(f"MLflow initialized: {settings.mlflow_tracking_uri}")
 
 
 @app.on_event("shutdown")
