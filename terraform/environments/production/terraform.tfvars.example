@@ -36,5 +36,15 @@ ml_memory  = 4096
 # Monitoring
 alarm_email = "prod-alerts@example.com"
 
+# Alert thresholds
+daily_loss_threshold        = -2000
+exposure_limit              = 100000
+critical_bankroll_threshold = 10000
+
+# Alert notification emails
+critical_alert_email = "prod-critical@example.com"
+warning_alert_email  = "prod-warning@example.com"
+info_alert_email     = "prod-info@example.com"
+
 # ACM Certificate (must be created manually in AWS Console)
 acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

@@ -11,10 +11,12 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/yourusername/clever-better/internal/config"
-	"github.com/yourusername/clever-better/internal/database"
+	applogger "github.com/yourusername/clever-better/internal/logger"
 	"github.com/yourusername/clever-better/internal/ml"
 	"github.com/yourusername/clever-better/internal/repository"
 	"github.com/yourusername/clever-better/internal/service"
+	"github.com/yourusername/clever-better/internal/tracing"
+	"github.com/yourusername/clever-better/internal/database"
 )
 
 // Build information - set via ldflags
@@ -28,6 +30,7 @@ var (
 	configFile  string
 	batchSize   int
 	logger      *logrus.Logger
+	mlLogger    *applogger.MLLogger
 	cfg         *config.Config
 	db          *database.DB
 	repos       *repository.Repositories
@@ -113,6 +116,24 @@ func setupDependencies() error {
 	logger.SetLevel(logrus.DebugLevel)
 	logger.SetFormatter(&logrus.JSONFormatter{})
 
+	// Initialize ML logger
+	mlLogger = applogger.NewMLLogger(logger)
+
+	// Initialize X-Ray tracing
+	if os.Getenv("XRAY_ENABLED") == "true" {
+		daemonAddr := os.Getenv("XRAY_DAEMON_ADDR")
+		if daemonAddr == "" {
+			daemonAddr = "localhost:2000"
+		}
+		tracing.Initialize(tracing.Config{
+			ServiceName: "clever-better-ml-feedback",
+			Enabled:     true,
+			SamplingRate: 0.1,
+			DaemonAddr:  daemonAddr,
+		}, logger)
+		logger.WithField("daemon_addr", daemonAddr).Info("AWS X-Ray tracing initialized")
+	}
+
 	// Connect to database
 	var err error
 	db, err = database.New(cfg.Database)
@@ -144,8 +165,10 @@ func submitBatchFeedback(ctx context.Context) error {
 	count, err := mlFeedback.SubmitBatch(ctx, batchSize)
 	if err != nil {
 		logger.WithError(err).Error("Failed to submit batch feedback")
+		mlLogger.LogMLPredictionError("feedback_submission", err.Error())
 		return err
 	}
+	mlLogger.LogBacktestFeedback("batch", count, 0)
 
 	fmt.Printf("Successfully submitted %d backtest results as feedback\n", count)
 	return nil
@@ -182,8 +205,10 @@ func triggerRetraining(ctx context.Context) error {
 		status, err := mlFeedback.TriggerRetraining(ctx, config)
 		if err != nil {
 			logger.WithError(err).WithField("model_type", config.ModelType).Error("Failed to trigger retraining")
+			mlLogger.LogMLPredictionError(config.ModelType, err.Error())
 			continue
 		}
+		mlLogger.LogModelTraining(config.ModelType, 0, map[string]float64{}, map[string]interface{}{"batch_size": config.BatchSize, "epochs": config.Epochs})
 
 		fmt.Printf("✓ Submitted training job for %s model\n", config.ModelType)
 		fmt.Printf("  Job ID: %s\n", status.JobID)

@@ -109,6 +109,11 @@ resource "aws_ecs_task_definition" "bot" {
           containerPort = 8080
           protocol      = "tcp"
           name          = "health"
+        },
+        {
+          containerPort = 9090
+          protocol      = "tcp"
+          name          = "metrics"
         }
       ]
 
@@ -122,6 +127,14 @@ resource "aws_ecs_task_definition" "bot" {
           {
             name  = "HEALTH_PORT"
             value = "8080"
+          },
+          {
+            name  = "XRAY_ENABLED"
+            value = "true"
+          },
+          {
+            name  = "XRAY_DAEMON_ADDR"
+            value = "localhost:2000"
           }
         ]
       )
@@ -163,6 +176,30 @@ resource "aws_ecs_task_definition" "bot" {
       }
 
       stopTimeout = 30
+    },
+    {
+      name      = "xray-daemon"
+      image     = "public.ecr.aws/xray/aws-xray-daemon:latest"
+      essential = false
+      cpu       = 32
+      memory    = 256
+
+      portMappings = [
+        {
+          containerPort = 2000
+          protocol      = "udp"
+          name          = "xray"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.bot.name
+          awslogs-region        = data.aws_region.current.name
+          awslogs-stream-prefix = "xray-daemon"
+        }
+      }
     }
   ])
 

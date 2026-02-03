@@ -52,6 +52,44 @@ output "guardduty_detector_id" {
 }
 
 # =============================================================================
+# Dashboard Outputs
+# =============================================================================
+
+output "cloudwatch_dashboard_arn" {
+  value       = module.dashboards.dashboard_arn
+  description = "CloudWatch dashboard ARN"
+}
+
+output "cloudwatch_dashboard_url" {
+  value       = module.dashboards.dashboard_url
+  description = "CloudWatch dashboard URL"
+}
+
+# =============================================================================
+# Alerts Outputs
+# =============================================================================
+
+output "critical_alarms_topic_arn" {
+  value       = module.alerts.critical_topic_arn
+  description = "Critical alerts SNS topic ARN"
+}
+
+output "warning_alarms_topic_arn" {
+  value       = module.alerts.warning_topic_arn
+  description = "Warning alerts SNS topic ARN"
+}
+
+output "info_alarms_topic_arn" {
+  value       = module.alerts.info_topic_arn
+  description = "Info alerts SNS topic ARN"
+}
+
+output "alarm_arns" {
+  value       = module.alerts.alarm_arns
+  description = "Map of alarm names to ARNs"
+}
+
+# =============================================================================
 # ECR Outputs
 # =============================================================================
 

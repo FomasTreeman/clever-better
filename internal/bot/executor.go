@@ -41,6 +41,7 @@ type Executor struct {
 	paperTradingMode bool
 	liveTradingEnabled bool
 	logger           *logrus.Logger
+	auditLogger      *logrus.Entry
 	metrics          *ExecutorMetrics
 	mu               sync.Mutex
 }
@@ -53,6 +54,7 @@ func NewExecutor(
 	paperTradingMode bool,
 	liveTradingEnabled bool,
 	logger *logrus.Logger,
+	auditLogger *logrus.Entry,
 ) *Executor {
 	if !liveTradingEnabled {
 		paperTradingMode = true
@@ -64,6 +66,7 @@ func NewExecutor(
 		paperTradingMode: paperTradingMode,
 		liveTradingEnabled: liveTradingEnabled,
 		logger:           logger,
+		auditLogger:      auditLogger,
 		metrics: &ExecutorMetrics{
 			LastExecutionTime: time.Now(),
 		},
@@ -136,6 +139,21 @@ func (e *Executor) ExecuteSignal(
 			"stake":       signal.Stake,
 			"confidence":  signal.Confidence,
 		}).Info("Paper trade executed (simulated)")
+
+		// Audit log bet placement
+		if e.auditLogger != nil {
+			e.auditLogger.WithFields(logrus.Fields{
+				"bet_id":        bet.ID.String(),
+				"strategy_id":   strategyID.String(),
+				"market_id":     marketID,
+				"selection_id":  int64(selectionID),
+				"bet_type":      string(bet.Side),
+				"stake":         signal.Stake,
+				"odds":          signal.Odds,
+				"timestamp":     bet.PlacedAt.Unix(),
+				"paper_trading": true,
+			}).Info("Bet placement recorded")
+		}
 
 		e.mu.Lock()
 		e.metrics.OrdersExecuted++
@@ -217,6 +235,21 @@ func (e *Executor) ExecuteSignal(
 		"stake":          bet.Stake,
 		"confidence":     signal.Confidence,
 	}).Info("Live bet executed successfully")
+
+	// Audit log live bet placement
+	if e.auditLogger != nil {
+		e.auditLogger.WithFields(logrus.Fields{
+			"bet_id":        bet.ID.String(),
+			"strategy_id":   strategyID.String(),
+			"market_id":     marketID,
+			"selection_id":  int64(selectionID),
+			"bet_type":      string(bet.Side),
+			"stake":         bet.Stake,
+			"odds":          bet.Odds,
+			"timestamp":     bet.PlacedAt.Unix(),
+			"paper_trading": false,
+		}).Info("Bet placement recorded")
+	}
 
 	e.mu.Lock()
 	e.metrics.OrdersExecuted++

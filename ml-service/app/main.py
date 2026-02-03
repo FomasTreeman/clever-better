@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,7 +14,9 @@ from app.utils.logging import configure_logging, get_logger
 from app.api.training_routes import router as training_router
 from app.api.prediction_routes import router as prediction_router
 from app.api.visualization_routes import router as visualization_router
+from app.api.dashboard_routes import router as dashboard_router
 from app.monitoring import ml_logger
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 import mlflow
 
 settings = get_settings()
@@ -39,6 +41,7 @@ app.include_router(router)
 app.include_router(training_router, prefix="/api/v1")
 app.include_router(prediction_router, prefix="/api/v1")
 app.include_router(visualization_router, prefix="/api/v1")
+app.include_router(dashboard_router, prefix="/api/v1")
 
 
 @app.get("/health")
@@ -48,8 +51,8 @@ async def health() -> dict:
 
 
 @app.get("/metrics")
-async def metrics() -> dict:
-    return {"status": "ok"}
+async def metrics() -> Response:
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.middleware("http")

@@ -6,11 +6,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"github.com/yourusername/clever-better/internal/betfair"
 	"github.com/yourusername/clever-better/internal/bot"
@@ -19,8 +21,10 @@ import (
 	"github.com/yourusername/clever-better/internal/database"
 	"github.com/yourusername/clever-better/internal/health"
 	"github.com/yourusername/clever-better/internal/logger"
+	"github.com/yourusername/clever-better/internal/metrics"
 	"github.com/yourusername/clever-better/internal/ml"
 	"github.com/yourusername/clever-better/internal/repository"
+	"github.com/yourusername/clever-better/internal/tracing"
 )
 
 // Build information - set via ldflags
@@ -86,6 +90,43 @@ func main() {
 		"build_date":  BuildDate,
 	}).Info("Clever Better Trading Bot starting")
 
+	// Initialize Prometheus metrics registry
+	metrics.InitRegistry()
+	appLog.Info("Prometheus metrics registry initialized")
+
+	// Start Prometheus HTTP server on port 9090
+	go func() {
+		http.Handle("/metrics", promhttp.HandlerFor(
+			metrics.GetRegistry(),
+			promhttp.HandlerOpts{},
+		))
+		metricsServer := &http.Server{
+			Addr:         ":9090",
+			Handler:      http.DefaultServeMux,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+		}
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			appLog.WithError(err).Error("Prometheus metrics server error")
+		}
+	}()
+	appLog.Info("Prometheus metrics server started on :9090")
+
+	// Initialize AWS X-Ray tracing
+	xrayEnabled := os.Getenv("XRAY_ENABLED") == "true"
+	if xrayEnabled {
+		daemonAddr := os.Getenv("XRAY_DAEMON_ADDR")
+		if daemonAddr == "" {
+			daemonAddr = "localhost:2000"
+		}
+		tracing.Initialize(tracing.Config{
+			ServiceName: "clever-better-bot",
+			Enabled:     true,
+			SamplingRate: 0.1,
+			DaemonAddr:  daemonAddr,
+		}, appLog)
+		appLog.WithField("daemon_addr", daemonAddr).Info("AWS X-Ray tracing initialized")
+	}
 	// Initialize database connection
 	db, err = database.NewDB(cfg.GetDatabaseDSN())
 	if err != nil {
@@ -102,6 +143,11 @@ func main() {
 	// Set up signal handling and context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Create specialized loggers for observability
+	strategyLogger := logger.NewStrategyLogger(appLog)
+	mlLogger := logger.NewMLLogger(appLog)
+	auditLogger := logger.NewAuditLogger(appLog)
 
 	// Start health check server
 	healthServer := health.NewServer(health.Config{
@@ -204,6 +250,9 @@ func main() {
 		orderManager,
 		repos,
 		appLog,
+		strategyLogger.Entry,
+		mlLogger.Entry,
+		auditLogger.Entry,
 	)
 	if err != nil {
 		appLog.WithError(err).Fatal("Failed to create orchestrator")

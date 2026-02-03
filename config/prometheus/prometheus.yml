@@ -1,0 +1,56 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'clever-better-monitor'
+    environment: 'development'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Clever Better Bot
+  - job_name: 'clever-better-bot'
+    static_configs:
+      - targets: ['bot:9090']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    relabel_configs:
+      - source_labels: [__scheme__]
+        target_label: __scheme__
+        replacement: http
+
+  # ML Service
+  - job_name: 'ml-service'
+    static_configs:
+      - targets: ['ml-service:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 5s
+
+  # Node Exporter (system metrics)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 15s
+
+  # Docker containers (if using cadvisor)
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['localhost:8080']
+    scrape_interval: 15s

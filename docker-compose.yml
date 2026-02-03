@@ -90,6 +90,8 @@ services:
       ENVIRONMENT: development
       HEALTH_PORT: "8080"
       LOG_LEVEL: info
+      XRAY_ENABLED: "true"
+      XRAY_DAEMON_ADDR: xray-daemon:2000
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -136,6 +138,41 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - clever-better-network
+
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: clever-better-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - clever-better-network
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: clever-better-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - clever-better-network
+
+  xray-daemon:
+    image: amazon/aws-xray-daemon:3.3.7
+    container_name: clever-better-xray
+    command: ["-o", "-b", "0.0.0.0:2000"]
+    ports:
+      - "2000:2000/udp"
     networks:
       - clever-better-network
 

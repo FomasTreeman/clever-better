@@ -57,6 +57,9 @@ type Orchestrator struct {
 	circuitBreaker   *CircuitBreaker
 	activeStrategies map[uuid.UUID]strategy.Strategy
 	logger           *logrus.Logger
+	strategyLogger   *logrus.Entry
+	mlLogger         *logrus.Entry
+	auditLogger      *logrus.Entry
 	done             chan struct{}
 	running          bool
 	mu               sync.RWMutex
@@ -71,6 +74,9 @@ func NewOrchestrator(
 	orderManager *betfair.OrderManager,
 	repos Repositories,
 	logger *logrus.Logger,
+	strategyLogger *logrus.Entry,
+	mlLogger *logrus.Entry,
+	auditLogger *logrus.Entry,
 ) (*Orchestrator, error) {
 	// Initialize risk manager
 	riskManager := NewRiskManager(&cfg.Trading, repos.Bet, logger)
@@ -83,6 +89,7 @@ func NewOrchestrator(
 		cfg.Features.PaperTradingEnabled,
 		cfg.Features.LiveTradingEnabled,
 		logger,
+		auditLogger,
 	)
 
 	// Initialize circuit breaker
@@ -125,6 +132,9 @@ func NewOrchestrator(
 		circuitBreaker:   circuitBreaker,
 		activeStrategies: make(map[uuid.UUID]strategy.Strategy),
 		logger:           logger,
+		strategyLogger:   strategyLogger,
+		mlLogger:         mlLogger,
+		auditLogger:      auditLogger,
 		done:             make(chan struct{}),
 	}
 
@@ -341,7 +351,10 @@ func (o *Orchestrator) evaluateStrategies(ctx context.Context, race *models.Race
 		}
 
 		// Evaluate strategy
+		startTime := time.Now()
 		stratSignals, err := strat.Evaluate(ctx, stratCtx)
+		duration := time.Since(startTime)
+
 		if err != nil {
 			o.logger.WithFields(logrus.Fields{
 				"strategy_id": strategyID,
@@ -349,6 +362,32 @@ func (o *Orchestrator) evaluateStrategies(ctx context.Context, race *models.Race
 				"error":       err.Error(),
 			}).Warn("Strategy evaluation failed")
 			continue
+		}
+
+		// Log strategy evaluation with dedicated logger
+		if o.strategyLogger != nil {
+			o.strategyLogger.WithFields(logrus.Fields{
+				"strategy_id":       strategyID.String(),
+				"race_id":           race.ID.String(),
+				"market_id":         race.MarketID,
+				"signals_generated": len(stratSignals),
+				"duration_ms":       duration.Milliseconds(),
+				"timestamp":         time.Now().Unix(),
+			}).Info("Strategy evaluation completed")
+
+			// Log each strategy decision
+			for _, sig := range stratSignals {
+				o.strategyLogger.WithFields(logrus.Fields{
+					"strategy_id": strategyID.String(),
+					"race_id":     race.ID.String(),
+					"runner_id":   sig.RunnerID.String(),
+					"signal_type": sig.Type,
+					"odds":        sig.Odds,
+					"stake":       sig.Stake,
+					"confidence":  sig.Confidence,
+					"timestamp":   time.Now().Unix(),
+				}).Info("Strategy decision made")
+			}
 		}
 
 		// Wrap signals with context

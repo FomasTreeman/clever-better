@@ -32,5 +32,15 @@ ml_memory  = 2048
 # Monitoring
 alarm_email = "staging-alerts@example.com"
 
+# Alert thresholds
+daily_loss_threshold        = -1000
+exposure_limit              = 75000
+critical_bankroll_threshold = 5000
+
+# Alert notification emails
+critical_alert_email = "staging-critical@example.com"
+warning_alert_email  = "staging-warning@example.com"
+info_alert_email     = "staging-info@example.com"
+
 # ACM Certificate (must be created manually in AWS Console)
 acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

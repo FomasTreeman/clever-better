@@ -14,9 +14,11 @@ import (
 
 	"github.com/yourusername/clever-better/internal/config"
 	"github.com/yourusername/clever-better/internal/database"
+	applogger "github.com/yourusername/clever-better/internal/logger"
 	"github.com/yourusername/clever-better/internal/ml"
 	"github.com/yourusername/clever-better/internal/repository"
 	"github.com/yourusername/clever-better/internal/service"
+	"github.com/yourusername/clever-better/internal/tracing"
 )
 
 // Build information - set via ldflags
@@ -29,6 +31,7 @@ var (
 var (
 	configFile string
 	logger     *logrus.Logger
+	mlLogger   *applogger.MLLogger
 	cfg        *config.Config
 	db         *database.DB
 	repos      *repository.Repositories
@@ -86,6 +89,22 @@ func setupDependencies() error {
 	logger.SetLevel(logrus.DebugLevel)
 	logger.SetFormatter(&logrus.JSONFormatter{})
 
+	mlLogger = applogger.NewMLLogger(logger)
+
+	if os.Getenv("XRAY_ENABLED") == "true" {
+		daemonAddr := os.Getenv("XRAY_DAEMON_ADDR")
+		if daemonAddr == "" {
+			daemonAddr = "localhost:2000"
+		}
+		tracing.Initialize(tracing.Config{
+			ServiceName: "clever-better-strategy-discovery",
+			Enabled:     true,
+			SamplingRate: 0.1,
+			DaemonAddr:  daemonAddr,
+		}, logger)
+		logger.WithField("daemon_addr", daemonAddr).Info("AWS X-Ray tracing initialized")
+	}
+
 	// Connect to database
 	var err error
 	db, err = database.New(cfg.Database)
@@ -139,10 +158,15 @@ func runDiscoveryPipeline() {
 
 	// Run discovery pipeline
 	logger.Info("Starting strategy discovery pipeline")
+	mlLogger.LogStrategyGeneration(map[string]interface{}{"risk_level": discoveryConfig.RiskLevel}, discoveryConfig.GenerateCount, 0, 0)
 	report, err := orchestrator.RunStrategyDiscoveryPipeline(ctx, discoveryConfig)
 	if err != nil {
 		logger.WithError(err).Error("Pipeline execution failed")
+		mlLogger.LogMLPredictionError("strategy_discovery", err.Error())
 		os.Exit(1)
+	}
+	if len(report.TopStrategies) > 0 {
+		mlLogger.LogStrategyRankingUpdate(report.GeneratedCount, report.TopStrategies[0].StrategyID, "composite_score")
 	}
 
 	// Print report

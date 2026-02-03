@@ -1,0 +1,11 @@
+apiVersion: 1
+
+dashboardProviders:
+  - name: 'Clever Better'
+    orgId: 1
+    folder: 'Clever Better'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

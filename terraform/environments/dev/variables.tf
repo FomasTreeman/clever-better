@@ -105,3 +105,41 @@ variable "ml_memory" {
   default     = 2048
   description = "ML service task memory (MB)"
 }
+
+
+  # =============================================================================
+  # Alert Configuration
+  # =============================================================================
+
+  variable "daily_loss_threshold" {
+    type        = number
+    default     = -500
+    description = "Daily loss threshold for alerting"
+  }
+
+  variable "exposure_limit" {
+    type        = number
+    default     = 50000
+    description = "Total market exposure limit"
+  }
+
+  variable "critical_bankroll_threshold" {
+    type        = number
+    default     = 1000
+    description = "Critical minimum bankroll threshold"
+  }
+
+  variable "critical_alert_email" {
+    type        = string
+    description = "Email for critical alerts"
+  }
+
+  variable "warning_alert_email" {
+    type        = string
+    description = "Email for warning alerts"
+  }
+
+  variable "info_alert_email" {
+    type        = string
+    description = "Email for info alerts"
+  }

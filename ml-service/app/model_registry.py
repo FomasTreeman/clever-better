@@ -78,3 +78,23 @@ class ModelRegistry:
             version=version,
             stage=stage
         )
+
+    def get_registered_models(self):
+        """Return all registered models in MLflow."""
+        return self.client.search_registered_models()
+
+    def get_model_metrics(self, model_name: str) -> Dict[str, Any]:
+        """Return latest metrics for a model name."""
+        try:
+            versions = self.client.get_latest_versions(model_name)
+            if not versions:
+                return {}
+
+            latest = sorted(versions, key=lambda v: int(v.version))[-1]
+            run = self.client.get_run(latest.run_id)
+            metrics = dict(run.data.metrics)
+            metrics["run_id"] = latest.run_id
+            metrics["version"] = latest.version
+            return metrics
+        except Exception:
+            return {}

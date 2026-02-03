@@ -107,6 +107,46 @@ module "monitoring" {
 }
 
 # =============================================================================
+# CloudWatch Dashboards
+# =============================================================================
+
+module "dashboards" {
+  source = "../../modules/dashboards"
+
+  environment      = var.environment
+  project_name     = "clever-better"
+  ecs_cluster_name = module.ecs.cluster_name
+  rds_instance_id  = module.rds.db_instance_id
+  alb_arn_suffix   = join("/", slice(split("/", module.alb.alb_arn), 1, 4))
+  log_group_names = [
+    "/clever-better/strategy-decisions",
+    "/clever-better/ml-operations",
+    "/clever-better/audit-trail"
+  ]
+
+  tags = local.tags
+}
+
+# =============================================================================
+# CloudWatch Alerts
+# =============================================================================
+
+module "alerts" {
+  source = "../../modules/alerts"
+
+  environment                 = var.environment
+  project_name                = "clever-better"
+  daily_loss_threshold        = var.daily_loss_threshold
+  exposure_limit              = var.exposure_limit
+  critical_bankroll_threshold = var.critical_bankroll_threshold
+  critical_email              = var.critical_alert_email
+  warning_email               = var.warning_alert_email
+  info_email                  = var.info_alert_email
+
+  tags = local.tags
+}
+
+# =============================================================================
 # ECR Repositories
 # =============================================================================
 
