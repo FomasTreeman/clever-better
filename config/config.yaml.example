@@ -214,6 +214,24 @@ trading:
   pre_race_window_minutes: 30
   min_time_to_start_seconds: 60
 
+  # Bot Control
+  max_concurrent_bets: 10
+  strategy_evaluation_interval: 60  # seconds
+  emergency_shutdown_enabled: true
+
+# =============================================================================
+# Bot Configuration
+# =============================================================================
+bot:
+  # Monitoring Intervals
+  order_monitoring_interval: 30  # seconds
+  performance_update_interval: 60  # seconds
+
+  # Circuit Breaker Settings
+  max_consecutive_losses: 5
+  max_drawdown_percent: 0.15  # 15%
+  risk_free_rate: 0.02  # 2% annual risk-free rate
+
 # =============================================================================
 # Backtesting Configuration
 # =============================================================================

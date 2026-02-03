@@ -121,13 +121,15 @@ func validateCrossField(cfg *Config) error {
 		return fmt.Errorf("backtest start_date must be before end_date")
 	}
 
+	// Validate trading modes
+	if !cfg.Features.LiveTradingEnabled && !cfg.Features.PaperTradingEnabled {
+		return fmt.Errorf("at least one trading mode must be enabled")
+	}
+
 	// Validate production environment requirements
 	if cfg.IsProduction() {
 		if cfg.Database.SSLMode == "disable" {
 			return fmt.Errorf("production environment requires SSL mode to be 'require' or 'verify-full'")
-		}
-		if !cfg.Features.LiveTradingEnabled && !cfg.Features.PaperTradingEnabled {
-			return fmt.Errorf("at least one trading mode must be enabled in production")
 		}
 	}
 

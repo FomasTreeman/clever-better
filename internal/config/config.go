@@ -16,6 +16,7 @@ type Config struct {
 	DataIngestion  DataIngestionConfig  `mapstructure:"data_ingestion" validate:"required"`
 	Metrics        MetricsConfig        `mapstructure:"metrics" validate:"required"`
 	Features       FeaturesConfig       `mapstructure:"features" validate:"required"`
+	Bot            BotConfig            `mapstructure:"bot" validate:"required"`
 }
 
 // AppConfig represents application-level configuration
@@ -66,14 +67,26 @@ type MLServiceConfig struct {
 
 // TradingConfig represents trading strategy and risk management configuration
 type TradingConfig struct {
-	MaxStakePerBet              float64  `mapstructure:"max_stake_per_bet" validate:"required,gt=0"`
-	MaxDailyLoss                float64  `mapstructure:"max_daily_loss" validate:"required,gt=0"`
-	MaxExposure                 float64  `mapstructure:"max_exposure" validate:"required,gt=0"`
-	MinConfidenceThreshold      float64  `mapstructure:"min_confidence_threshold" validate:"required,gte=0,lte=1"`
-	MinExpectedValue            float64  `mapstructure:"min_expected_value" validate:"required,gte=0"`
-	Markets                     []string `mapstructure:"markets" validate:"required,min=1,markets"`
-	PreRaceWindowMinutes        int      `mapstructure:"pre_race_window_minutes" validate:"required,gte=0"`
-	MinTimeToStartSeconds       int      `mapstructure:"min_time_to_start_seconds" validate:"required,gte=0"`
+	MaxStakePerBet               float64  `mapstructure:"max_stake_per_bet" validate:"required,gt=0"`
+	MaxDailyLoss                 float64  `mapstructure:"max_daily_loss" validate:"required,gt=0"`
+	MaxExposure                  float64  `mapstructure:"max_exposure" validate:"required,gt=0"`
+	MinConfidenceThreshold       float64  `mapstructure:"min_confidence_threshold" validate:"required,gte=0,lte=1"`
+	MinExpectedValue             float64  `mapstructure:"min_expected_value" validate:"required,gte=0"`
+	Markets                      []string `mapstructure:"markets" validate:"required,min=1,markets"`
+	PreRaceWindowMinutes         int      `mapstructure:"pre_race_window_minutes" validate:"required,gte=0"`
+	MinTimeToStartSeconds        int      `mapstructure:"min_time_to_start_seconds" validate:"required,gte=0"`
+	MaxConcurrentBets            int      `mapstructure:"max_concurrent_bets" validate:"required,gt=0"`
+	StrategyEvaluationInterval   int      `mapstructure:"strategy_evaluation_interval" validate:"required,gt=0"`
+	EmergencyShutdownEnabled     bool     `mapstructure:"emergency_shutdown_enabled"`
+}
+
+// BotConfig represents bot-specific configuration
+type BotConfig struct {
+	OrderMonitoringInterval    int     `mapstructure:"order_monitoring_interval" validate:"required,gt=0"`
+	PerformanceUpdateInterval  int     `mapstructure:"performance_update_interval" validate:"required,gt=0"`
+	MaxConsecutiveLosses       int     `mapstructure:"max_consecutive_losses" validate:"required,gt=0"`
+	MaxDrawdownPercent         float64 `mapstructure:"max_drawdown_percent" validate:"required,gt=0,lt=1"`
+	RiskFreeRate               float64 `mapstructure:"risk_free_rate" validate:"gte=0,lte=1"`
 }
 
 // BacktestConfig represents backtesting configuration
