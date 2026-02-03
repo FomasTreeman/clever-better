@@ -5,3 +5,10 @@ enable_nat_gateway = true
 enable_waf_logging = true
 waf_rate_limit = 3000
 alarm_email = "staging-alerts@example.com"
+
+# RDS Configuration
+rds_instance_class = "db.r6g.large"
+rds_multi_az       = true
+
+# ACM Certificate (must be created beforehand)
+acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxx"

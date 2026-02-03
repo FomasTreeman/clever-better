@@ -1,15 +1,14 @@
-output "cloudtrail_arn" {
-  value = var.enable_cloudtrail ? aws_cloudtrail.this[0].arn : ""
+output "operational_alarms_topic_arn" {
+  value       = aws_sns_topic.operational_alarms.arn
+  description = "SNS topic ARN for operational alarms"
 }
 
-output "cloudtrail_bucket_name" {
-  value = var.enable_cloudtrail ? aws_s3_bucket.cloudtrail[0].bucket : ""
+output "bot_log_group_name" {
+  value       = aws_cloudwatch_log_group.bot.name
+  description = "CloudWatch log group name for bot service"
 }
 
-output "guardduty_detector_id" {
-  value = var.enable_guardduty ? aws_guardduty_detector.this[0].id : ""
-}
-
-output "security_alarms_topic_arn" {
-  value = aws_sns_topic.security.arn
+output "ml_service_log_group_name" {
+  value       = aws_cloudwatch_log_group.ml_service.name
+  description = "CloudWatch log group name for ML service"
 }

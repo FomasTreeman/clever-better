@@ -62,3 +62,20 @@ variable "alarm_email" {
   type        = string
   description = "Email for alarms"
 }
+
+variable "rds_instance_class" {
+  type        = string
+  default     = "db.r6g.large"
+  description = "RDS instance class"
+}
+
+variable "rds_multi_az" {
+  type        = bool
+  default     = true
+  description = "Enable Multi-AZ for RDS"
+}
+
+variable "acm_certificate_arn" {
+  type        = string
+  description = "ACM certificate ARN for HTTPS"
+}

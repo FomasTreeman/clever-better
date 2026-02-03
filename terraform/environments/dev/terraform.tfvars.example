@@ -5,3 +5,10 @@ enable_nat_gateway = true
 enable_waf_logging = false
 waf_rate_limit = 5000
 alarm_email = "dev-alerts@example.com"
+
+# RDS Configuration
+rds_instance_class = "db.t4g.medium"
+rds_multi_az       = false
+
+# ACM Certificate (must be created beforehand)
+acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxx"

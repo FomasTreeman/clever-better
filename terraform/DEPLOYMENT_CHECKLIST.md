@@ -13,3 +13,15 @@
 - [ ] WAF rules tested
 - [ ] CloudTrail and GuardDuty verified
 - [ ] Alarms configured and tested
+- [ ] Create ACM certificate for domain
+- [ ] Validate certificate via DNS or email
+- [ ] Update terraform.tfvars with certificate ARN
+- [ ] Review RDS instance class and storage settings
+- [ ] Confirm Multi-AZ settings for each environment
+- [ ] Set appropriate deletion protection flags
+- [ ] Configure alarm email addresses
+- [ ] Review CloudTrail retention policies
+- [ ] Enable GuardDuty protections as needed
+- [ ] After deployment: Install TimescaleDB extension
+- [ ] After deployment: Run database migrations
+- [ ] After deployment: Configure DNS records

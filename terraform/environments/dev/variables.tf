@@ -38,3 +38,20 @@ variable "alarm_email" {
   type        = string
   description = "Email for alarms"
 }
+
+variable "rds_instance_class" {
+  type        = string
+  default     = "db.t4g.medium"  # Smaller instance for dev
+  description = "RDS instance class"
+}
+
+variable "rds_multi_az" {
+  type        = bool
+  default     = false  # Single AZ for dev to save costs
+  description = "Enable Multi-AZ for RDS"
+}
+
+variable "acm_certificate_arn" {
+  type        = string
+  description = "ACM certificate ARN for HTTPS"
+}
