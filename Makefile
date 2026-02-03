@@ -8,6 +8,12 @@ PYTHON_VERSION := 3.11
 DOCKER_REGISTRY := your-registry
 PROJECT_NAME := clever-better
 
+# Version information
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+LDFLAGS := -w -s -X main.Version=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildDate=$(BUILD_DATE)
+
 # Database configuration
 DB_HOST := localhost
 DB_PORT := 5432
@@ -103,9 +109,9 @@ go-tidy: ## Tidy Go modules
 .PHONY: go-build
 go-build: ## Build all Go binaries
 	@mkdir -p bin
-	go build -o bin/bot ./cmd/bot
-	go build -o bin/backtest ./cmd/backtest
-	go build -o bin/data-ingestion ./cmd/data-ingestion
+	go build -ldflags="$(LDFLAGS)" -o bin/bot ./cmd/bot
+	go build -ldflags="$(LDFLAGS)" -o bin/backtest ./cmd/backtest
+	go build -ldflags="$(LDFLAGS)" -o bin/data-ingestion ./cmd/data-ingestion
 
 .PHONY: go-test
 go-test: ## Run Go tests
@@ -201,16 +207,36 @@ py-sec: ## Run Python security scanner
 
 .PHONY: docker-build
 docker-build: ## Build Docker images
-	docker build -t $(PROJECT_NAME)-bot:latest -f Dockerfile .
-	docker build -t $(PROJECT_NAME)-ml:latest -f ml-service/Dockerfile ml-service/
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t $(PROJECT_NAME)-bot:latest \
+		-t $(PROJECT_NAME)-bot:$(VERSION) \
+		-f Dockerfile .
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		-t $(PROJECT_NAME)-ml:latest \
+		-t $(PROJECT_NAME)-ml:$(VERSION) \
+		-f ml-service/Dockerfile ml-service/
 
 .PHONY: docker-build-bot
 docker-build-bot: ## Build bot Docker image
-	docker build -t $(PROJECT_NAME)-bot:latest -f Dockerfile .
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t $(PROJECT_NAME)-bot:latest \
+		-t $(PROJECT_NAME)-bot:$(VERSION) \
+		-f Dockerfile .
 
 .PHONY: docker-build-ml
 docker-build-ml: ## Build ML service Docker image
-	docker build -t $(PROJECT_NAME)-ml:latest -f ml-service/Dockerfile ml-service/
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		-t $(PROJECT_NAME)-ml:latest \
+		-t $(PROJECT_NAME)-ml:$(VERSION) \
+		-f ml-service/Dockerfile ml-service/
 
 .PHONY: docker-up
 docker-up: ## Start local development environment
@@ -309,6 +335,35 @@ tf-output-prod: ## Show Terraform outputs for production
 .PHONY: tf-setup-backend
 tf-setup-backend: ## Setup Terraform backend
 	./terraform/scripts/setup-backend.sh
+
+.PHONY: tf-test-backend
+tf-test-backend: ## Test Terraform backend connectivity for all environments
+	@echo "Testing remote backend connectivity..."
+	@for env in dev staging production; do \
+	  echo "Testing $$env environment..."; \
+	  cd terraform/environments/$$env && \
+	  if terraform init -upgrade >/dev/null 2>&1; then \
+	    echo "✓ $$env backend test passed"; \
+	  else \
+	    echo "✗ $$env backend test failed"; \
+	  fi; \
+	  cd - >/dev/null; \
+	done
+
+.PHONY: tf-migrate-state-dev
+tf-migrate-state-dev: ## Migrate Terraform state from local to remote backend (dev)
+	@echo "Migrating state to remote backend for dev..."
+	cd terraform/environments/dev && terraform init -migrate-state
+
+.PHONY: tf-migrate-state-staging
+tf-migrate-state-staging: ## Migrate Terraform state from local to remote backend (staging)
+	@echo "Migrating state to remote backend for staging..."
+	cd terraform/environments/staging && terraform init -migrate-state
+
+.PHONY: tf-migrate-state-prod
+tf-migrate-state-prod: ## Migrate Terraform state from local to remote backend (production)
+	@echo "Migrating state to remote backend for production..."
+	cd terraform/environments/production && terraform init -migrate-state
 
 # =============================================================================
 # Database Targets
@@ -482,15 +537,31 @@ ecr-login: ## Login to ECR
 
 .PHONY: ecr-push-bot
 ecr-push-bot: ecr-login ## Build and push bot image to ECR
-	docker build -t $(PROJECT_NAME)-$(ENV)-bot:$(TAG) -f Dockerfile .
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t $(PROJECT_NAME)-$(ENV)-bot:$(TAG) \
+		-f Dockerfile .
 	docker tag $(PROJECT_NAME)-$(ENV)-bot:$(TAG) $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-bot:$(TAG)
+	docker tag $(PROJECT_NAME)-$(ENV)-bot:$(TAG) $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-bot:$(GIT_COMMIT)
+	docker tag $(PROJECT_NAME)-$(ENV)-bot:$(TAG) $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-bot:latest
 	docker push $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-bot:$(TAG)
+	docker push $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-bot:$(GIT_COMMIT)
+	docker push $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-bot:latest
 
 .PHONY: ecr-push-ml
 ecr-push-ml: ecr-login ## Build and push ML service image to ECR
-	docker build -t $(PROJECT_NAME)-$(ENV)-ml-service:$(TAG) -f ml-service/Dockerfile ml-service/
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		-t $(PROJECT_NAME)-$(ENV)-ml-service:$(TAG) \
+		-f ml-service/Dockerfile ml-service/
 	docker tag $(PROJECT_NAME)-$(ENV)-ml-service:$(TAG) $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-ml-service:$(TAG)
+	docker tag $(PROJECT_NAME)-$(ENV)-ml-service:$(TAG) $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-ml-service:$(GIT_COMMIT)
+	docker tag $(PROJECT_NAME)-$(ENV)-ml-service:$(TAG) $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-ml-service:latest
 	docker push $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-ml-service:$(TAG)
+	docker push $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-ml-service:$(GIT_COMMIT)
+	docker push $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-ml-service:latest
 
 .PHONY: ecr-push-all
 ecr-push-all: ecr-push-bot ecr-push-ml ## Push all images to ECR
@@ -549,3 +620,51 @@ validate-staging: ## Validate staging deployment
 .PHONY: validate-prod
 validate-prod: ## Validate production deployment
 	./terraform/scripts/validate-deployment.sh production
+
+# =============================================================================
+# CI/CD Targets
+# =============================================================================
+
+.PHONY: ci-test
+ci-test: ## Run all tests with CI-friendly output
+	@echo "Running Go tests..."
+	go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -func=coverage.out
+	@echo ""
+	@echo "Running Python tests..."
+	cd ml-service && pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
+
+.PHONY: ci-build
+ci-build: ## Build all binaries with version information for CI
+	@echo "Building binaries with version: $(VERSION)"
+	@mkdir -p bin
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -o bin/bot ./cmd/bot
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -o bin/data-ingestion ./cmd/data-ingestion
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -o bin/backtest ./cmd/backtest
+	@echo "Build complete. Binaries in bin/"
+	@ls -la bin/
+
+.PHONY: ci-docker-build
+ci-docker-build: ## Build Docker images for CI with proper tags
+	@echo "Building Docker images for CI..."
+	./scripts/build-and-tag.sh bot $(ENV) $(VERSION)
+	./scripts/build-and-tag.sh ml-service $(ENV) $(VERSION)
+
+.PHONY: ci-deploy
+ci-deploy: ## Orchestrate full deployment (CI use only)
+	@echo "Starting deployment to $(ENV)..."
+	./scripts/wait-for-deployment.sh clever-better-$(ENV) bot 600
+	./scripts/wait-for-deployment.sh clever-better-$(ENV) ml-service 600
+	@echo "Deployment complete"
+
+.PHONY: health-check-local
+health-check-local: ## Test health endpoints locally
+	@echo "Checking local health endpoints..."
+	@./scripts/health-check.sh http://localhost:8080/health 5 3 || echo "Bot health check failed"
+	@./scripts/health-check.sh http://localhost:8000/health 5 3 || echo "ML service health check failed"
+
+.PHONY: version
+version: ## Show version information
+	@echo "Version:    $(VERSION)"
+	@echo "Git Commit: $(GIT_COMMIT)"
+	@echo "Build Date: $(BUILD_DATE)"

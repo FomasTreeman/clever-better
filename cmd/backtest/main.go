@@ -16,6 +16,13 @@ import (
 	"github.com/yourusername/clever-better/internal/strategy"
 )
 
+// Build information - set via ldflags
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+)
+
 func main() {
 	var (
 		configPath = flag.String("config", "config/config.yaml", "Path to config file")

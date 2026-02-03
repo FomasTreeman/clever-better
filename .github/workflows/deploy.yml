@@ -1,0 +1,554 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  AWS_REGION: eu-west-1
+  GO_VERSION: '1.22'
+  PYTHON_VERSION: '3.11'
+  TERRAFORM_VERSION: '1.5.0'
+
+jobs:
+  # =============================================================================
+  # Build and Test
+  # =============================================================================
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      git_sha: ${{ steps.version.outputs.git_sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version info
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev-$(git rev-parse --short HEAD)")
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "git_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download Go dependencies
+        run: go mod download
+
+      - name: Run Go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: Run Go tests
+        run: |
+          go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+          go tool cover -func=coverage.out
+
+      - name: Upload Go coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.out
+          flags: go
+          name: go-coverage
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: ml-service/requirements*.txt
+
+      - name: Install Python dependencies
+        working-directory: ml-service
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run Python linters
+        working-directory: ml-service
+        run: |
+          flake8 app/ --max-line-length=120 --ignore=E501,W503
+          mypy app/ --ignore-missing-imports || true
+
+      - name: Run Python tests
+        working-directory: ml-service
+        run: |
+          pytest tests/ -v --cov=app --cov-report=xml
+
+      - name: Upload Python coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ml-service/coverage.xml
+          flags: python
+          name: python-coverage
+
+      - name: Build Go binaries
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          GIT_COMMIT=${{ steps.version.outputs.git_sha }}
+          BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-w -s -X main.Version=${VERSION} -X main.GitCommit=${GIT_COMMIT} -X main.BuildDate=${BUILD_DATE}" \
+            -o bin/bot ./cmd/bot
+
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-w -s -X main.Version=${VERSION} -X main.GitCommit=${GIT_COMMIT} -X main.BuildDate=${BUILD_DATE}" \
+            -o bin/data-ingestion ./cmd/data-ingestion
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-binaries
+          path: bin/
+          retention-days: 7
+
+  # =============================================================================
+  # Docker Build
+  # =============================================================================
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.event_name == 'push'
+
+    strategy:
+      matrix:
+        service: [bot, ml-service]
+        include:
+          - service: bot
+            dockerfile: Dockerfile
+            context: .
+          - service: ml-service
+            dockerfile: ml-service/Dockerfile
+            context: ml-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == refs/heads/main ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/clever-better-${{ steps.env.outputs.environment }}-${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.build-test.outputs.version }}
+            GIT_COMMIT=${{ needs.build-test.outputs.git_sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save image digest
+        run: |
+          echo "Image pushed with digest: ${{ steps.meta.outputs.digest }}"
+          echo "${{ steps.meta.outputs.digest }}" > digest-${{ matrix.service }}.txt
+
+      - name: Upload image digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-digest-${{ matrix.service }}
+          path: digest-${{ matrix.service }}.txt
+
+  # =============================================================================
+  # Terraform Plan
+  # =============================================================================
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [build-test, docker-build]
+    if: github.event_name == 'push'
+
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == refs/heads/main ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        working-directory: terraform/environments/${{ steps.env.outputs.environment }}
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform/environments/${{ steps.env.outputs.environment }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: terraform/environments/${{ steps.env.outputs.environment }}
+        run: |
+          terraform plan \
+            -var="bot_image_tag=${{ needs.build-test.outputs.version }}" \
+            -var="ml_image_tag=${{ needs.build-test.outputs.version }}" \
+            -out=tfplan \
+            -no-color
+        continue-on-error: true
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ steps.env.outputs.environment }}
+          path: terraform/environments/${{ steps.env.outputs.environment }}/tfplan
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## Terraform Plan for `${{ steps.env.outputs.environment }}`
+
+            <details>
+            <summary>Plan Output</summary>
+
+            ```hcl
+            ${{ steps.plan.outputs.stdout }}
+            ```
+
+            </details>
+
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  # =============================================================================
+  # Deploy to Staging
+  # =============================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-test, docker-build, terraform-plan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.clever-better.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-staging
+          path: terraform/environments/staging
+
+      - name: Terraform Init
+        working-directory: terraform/environments/staging
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: terraform/environments/staging
+        run: terraform apply -auto-approve tfplan
+
+      - name: Wait for ECS deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster clever-better-staging \
+            --services bot ml-service \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Run health checks
+        run: |
+          # Wait for services to be healthy
+          sleep 30
+
+          # Health check bot service
+          curl -f --retry 5 --retry-delay 10 \
+            https://staging.clever-better.example.com/health || exit 1
+
+          # Health check ML service
+          curl -f --retry 5 --retry-delay 10 \
+            https://staging-ml.clever-better.example.com/health || exit 1
+
+      - name: Deployment notification
+        if: always()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "Staging deployment ${{ job.status }}: ${{ github.repository }}@${{ needs.build-test.outputs.version }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment ${{ job.status }}*\n*Repository:* ${{ github.repository }}\n*Version:* ${{ needs.build-test.outputs.version }}\n*Commit:* ${{ needs.build-test.outputs.git_sha }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
+
+  # =============================================================================
+  # Deploy to Production
+  # =============================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-test, docker-build, terraform-plan]
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://clever-better.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-production
+          path: terraform/environments/production
+
+      - name: Terraform Init
+        working-directory: terraform/environments/production
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: terraform/environments/production
+        run: terraform apply -auto-approve tfplan
+
+      - name: Wait for ECS deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster clever-better-production \
+            --services bot ml-service \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Run health checks
+        run: |
+          # Wait for services to be healthy
+          sleep 30
+
+          # Health check bot service
+          curl -f --retry 5 --retry-delay 10 \
+            https://clever-better.example.com/health || exit 1
+
+          # Health check ML service
+          curl -f --retry 5 --retry-delay 10 \
+            https://ml.clever-better.example.com/health || exit 1
+
+      - name: Run smoke tests
+        run: |
+          # Basic smoke tests for production
+          echo "Running smoke tests..."
+          # Add your smoke test commands here
+
+      - name: Deployment notification
+        if: always()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "Production deployment ${{ job.status }}: ${{ github.repository }}@${{ needs.build-test.outputs.version }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Production Deployment ${{ job.status }}*\n*Repository:* ${{ github.repository }}\n*Version:* ${{ needs.build-test.outputs.version }}\n*Commit:* ${{ needs.build-test.outputs.git_sha }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.build-test.outputs.version }}
+          name: Release ${{ needs.build-test.outputs.version }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =============================================================================
+  # Rollback (Manual Trigger)
+  # =============================================================================
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback ECS services
+        run: |
+          ENV=${{ github.event.inputs.environment }}
+
+          # Get previous task definition
+          PREV_BOT_TASK=$(aws ecs describe-services \
+            --cluster clever-better-${ENV} \
+            --services bot \
+            --query 'services[0].deployments[1].taskDefinition' \
+            --output text)
+
+          PREV_ML_TASK=$(aws ecs describe-services \
+            --cluster clever-better-${ENV} \
+            --services ml-service \
+            --query 'services[0].deployments[1].taskDefinition' \
+            --output text)
+
+          # Rollback bot service
+          aws ecs update-service \
+            --cluster clever-better-${ENV} \
+            --service bot \
+            --task-definition $PREV_BOT_TASK \
+            --force-new-deployment
+
+          # Rollback ML service
+          aws ecs update-service \
+            --cluster clever-better-${ENV} \
+            --service ml-service \
+            --task-definition $PREV_ML_TASK \
+            --force-new-deployment
+
+          # Wait for rollback to complete
+          aws ecs wait services-stable \
+            --cluster clever-better-${ENV} \
+            --services bot ml-service
+
+      - name: Rollback notification
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "Rollback completed for ${{ github.event.inputs.environment }}: ${{ github.repository }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true

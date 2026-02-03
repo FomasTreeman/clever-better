@@ -3,6 +3,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -12,13 +14,32 @@ import (
 	"github.com/yourusername/clever-better/internal/config"
 	"github.com/yourusername/clever-better/internal/datasource"
 	dbpkg "github.com/yourusername/clever-better/internal/database"
+	"github.com/yourusername/clever-better/internal/health"
 	"github.com/yourusername/clever-better/internal/logger"
 	"github.com/yourusername/clever-better/internal/repository"
 	"github.com/yourusername/clever-better/internal/scheduler"
 	"github.com/yourusername/clever-better/internal/service"
 )
 
+// Build information - set via ldflags
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+)
+
 func main() {
+	// Handle version flag
+	versionFlag := flag.Bool("version", false, "Print version information")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("Clever Better Data Ingestion Service\n")
+		fmt.Printf("  Version:    %s\n", Version)
+		fmt.Printf("  Git Commit: %s\n", GitCommit)
+		fmt.Printf("  Build Date: %s\n", BuildDate)
+		os.Exit(0)
+	}
 	// Load configuration
 	cfg, err := config.Load("config/config.yaml")
 	if err != nil {
@@ -46,6 +67,7 @@ func main() {
 	log := logger.NewLogger(cfg.App.LogLevel)
 
 	log.Info("Clever Better Data Ingestion Service")
+	log.Infof("Version: %s, Commit: %s, Build Date: %s", Version, GitCommit, BuildDate)
 	log.Infof("Running in %s mode with log level: %s", cfg.App.Environment, cfg.App.LogLevel)
 	log.Info("Configuration loaded and validated successfully")
 
@@ -57,6 +79,26 @@ func main() {
 	defer db.Close()
 
 	log.Info("Database connection established")
+
+	// Set up context for health server
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start health check server
+	healthServer := health.NewServer(health.Config{
+		ServiceName: "data-ingestion",
+		Version:     Version,
+		Commit:      GitCommit,
+		Logger:      log,
+		DB:          nil, // Connection interface differs; health server will skip DB check
+	})
+
+	if err := healthServer.Start(ctx); err != nil {
+		log.Errorf("Failed to start health server: %v", err)
+	} else {
+		log.Info("Health check server started")
+	}
+	defer healthServer.Shutdown()
 
 	// Initialize repositories
 	repos, err := repository.NewRepositories(db)
@@ -131,6 +173,9 @@ func main() {
 
 	log.Info("Scheduler started")
 
+	// Mark health server as ready
+	healthServer.SetReady(true)
+
 	// Set up graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -139,13 +184,21 @@ func main() {
 		sig := <-sigChan
 		log.Infof("Received signal: %v", sig)
 
+		// Mark as not ready
+		healthServer.SetReady(false)
+
 		// Gracefully stop scheduler with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+
+		// Cancel main context
+		cancel()
 
 		if err := sched.Stop(); err != nil {
 			log.Errorf("Error stopping scheduler: %v", err)
 		}
+
+		_ = shutdownCtx // Satisfy unused variable if needed
 
 		log.Info("Graceful shutdown complete")
 		os.Exit(0)

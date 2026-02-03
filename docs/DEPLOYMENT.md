@@ -5,11 +5,14 @@ This document describes the deployment procedures for Clever Better, including e
 ## Table of Contents
 
 - [Overview](#overview)
+- [CI/CD Pipeline Architecture](#cicd-pipeline-architecture)
 - [Prerequisites](#prerequisites)
 - [Environment Configuration](#environment-configuration)
 - [Deployment Procedures](#deployment-procedures)
 - [Rollback Procedures](#rollback-procedures)
 - [Operational Runbooks](#operational-runbooks)
+- [Image Tagging Strategy](#image-tagging-strategy)
+- [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -19,6 +22,104 @@ Clever Better is deployed on AWS using the following stack:
 - **Database**: RDS (TimescaleDB)
 - **Infrastructure**: Terraform
 - **CI/CD**: GitHub Actions
+
+## CI/CD Pipeline Architecture
+
+The deployment pipeline is fully automated using GitHub Actions:
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub Actions
+    participant ECR as AWS ECR
+    participant TF as Terraform
+    participant ECS as AWS ECS
+    participant Health as Health Checks
+
+    Dev->>GH: Push code / Create tag
+    GH->>GH: Run tests (Go + Python)
+    GH->>GH: Build Docker images
+    GH->>ECR: Push images with tags
+    GH->>TF: Terraform plan
+
+    alt Manual Approval Required
+        GH->>GH: Wait for approval
+    end
+
+    GH->>TF: Terraform apply
+    TF->>ECS: Update task definitions
+    TF->>ECS: Update services (blue-green)
+    ECS->>Health: Health check new tasks
+    Health-->>ECS: Health OK
+    ECS->>ECS: Drain old tasks
+    GH->>Health: Post-deployment validation
+    Health-->>GH: Validation passed
+    GH->>Dev: Deployment complete notification
+```
+
+### Pipeline Workflow
+
+```mermaid
+flowchart TD
+    A[Code Push/Tag] --> B{Branch/Tag?}
+    B -->|main| C[Deploy to Staging]
+    B -->|develop| D[Deploy to Dev]
+    B -->|v*.*.* tag| E[Deploy to Production]
+
+    C --> F[Build & Test]
+    D --> F
+    E --> F
+
+    F --> G[Build Docker Images]
+    G --> H[Push to ECR]
+    H --> I[Terraform Plan]
+
+    I --> J{Environment?}
+    J -->|Dev| K[Auto Apply]
+    J -->|Staging| L[Auto Apply]
+    J -->|Production| M[Manual Approval]
+
+    K --> N[Update ECS Services]
+    L --> N
+    M --> N
+
+    N --> O[Health Check]
+    O --> P{Healthy?}
+    P -->|Yes| Q[Complete]
+    P -->|No| R[Rollback]
+    R --> S[Notify Failure]
+```
+
+### Workflow Files
+
+- **`.github/workflows/deploy.yml`** - Main deployment workflow
+- **`.github/workflows/terraform-validate.yml`** - Terraform validation on PRs
+- **`.github/workflows/terraform-plan.yml`** - Terraform planning
+
+## Image Tagging Strategy
+
+Docker images are tagged with multiple identifiers for traceability:
+
+| Tag Format | Example | When Used |
+|------------|---------|-----------|
+| Semantic Version | `v1.2.3` | Production releases |
+| Git SHA | `a1b2c3d` | All builds |
+| Branch-latest | `latest-staging` | Latest per environment |
+| Major.Minor | `v1.2` | Production releases |
+
+### Version Embedding
+
+Go binaries include version information embedded via ldflags:
+
+```bash
+# Check version of deployed binary
+./bin/bot --version
+# Output:
+# Clever Better Trading Bot
+#   Version:    v1.2.3
+#   Git Commit: a1b2c3d
+#   Build Date: 2024-01-15T10:30:00Z
+```
 
 ### Deployment Environments
 
@@ -414,6 +515,90 @@ aws secretsmanager update-secret \
 
 | Service | Endpoint | Expected Response |
 |---------|----------|-------------------|
-| Bot | `/health` | `{"status": "healthy"}` |
-| ML Service | `/health` | `{"status": "healthy"}` |
+| Bot | `/health` | `{"status": "ok", "service": "bot"}` |
+| Bot | `/ready` | `{"status": "ok", "service": "bot", "checks": {...}}` |
+| Bot | `/live` | `{"status": "ok", "service": "bot"}` |
+| ML Service | `/health` | `{"status": "ok"}` |
 | ALB | `/health` | 200 OK |
+
+#### Testing Health Endpoints
+
+```bash
+# Local testing
+make health-check-local
+
+# Using the health check script
+./scripts/health-check.sh http://localhost:8080/health 5 3
+
+# Check readiness (includes database connectivity)
+curl -f http://localhost:8080/ready | jq .
+```
+
+## Troubleshooting
+
+### Common Deployment Issues
+
+#### 1. ECS Tasks Failing to Start
+
+```bash
+# Check task stopped reason
+aws ecs describe-tasks \
+  --cluster clever-better-staging \
+  --tasks <task-arn> \
+  --query 'tasks[0].{stoppedReason:stoppedReason,exitCode:containers[0].exitCode}'
+
+# Check CloudWatch logs
+aws logs tail /ecs/clever-better-bot --follow
+```
+
+**Common causes:**
+- Memory limits exceeded
+- Missing secrets in Secrets Manager
+- Database connection issues
+
+#### 2. Health Checks Failing
+
+```bash
+# Test health endpoint from ECS task
+aws ecs execute-command \
+  --cluster clever-better-staging \
+  --task <task-id> \
+  --container bot \
+  --command "curl -v localhost:8080/health"
+```
+
+**Common causes:**
+- HEALTH_PORT environment variable mismatch
+- Security group blocking traffic
+- Application startup failure
+
+#### 3. Image Push Failures
+
+```bash
+# Re-authenticate with ECR
+make ecr-login
+
+# Check ECR permissions
+aws ecr get-repository-policy --repository-name clever-better-staging-bot
+```
+
+### Deployment Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/build-and-tag.sh` | Build Docker images with versioning |
+| `scripts/health-check.sh` | Verify health endpoints |
+| `scripts/wait-for-deployment.sh` | Wait for ECS deployment completion |
+
+### Using the Helper Scripts
+
+```bash
+# Build and tag image
+./scripts/build-and-tag.sh bot staging v1.2.3
+
+# Wait for deployment
+./scripts/wait-for-deployment.sh clever-better-staging bot 600
+
+# Health check
+./scripts/health-check.sh https://staging.example.com/health 10 5
+```

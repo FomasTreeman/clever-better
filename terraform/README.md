@@ -36,12 +36,24 @@ Each environment has its own configuration:
 
 ## Backend Initialization
 
-1. Create backend resources:
+Backend configuration is managed via dedicated `backend.tf` files in each environment directory for clean separation of concerns and easier environment isolation.
+
+1. Create backend resources (S3 bucket and DynamoDB table):
    ```bash
    ./terraform/scripts/setup-backend.sh
    ```
-2. Uncomment the backend block in main.tf
-3. Run terraform init in the environment directory
+   This script creates environment-specific resources:
+   - S3 buckets: `clever-better-terraform-state-{dev|staging|production}`
+   - DynamoDB table: `clever-better-terraform-locks` (shared across all environments)
+
+2. Initialize Terraform with remote backend:
+   ```bash
+   cd terraform/environments/{dev|staging|production}
+   terraform init
+   ```
+   The `backend.tf` file in each environment automatically configures remote state storage.
+
+**Note**: Each environment has a separate S3 bucket for state isolation, while the DynamoDB lock table is shared (sufficient for cross-environment coordination).
 
 ## Deployment Workflow
 
@@ -56,18 +68,21 @@ For container deployments, see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md).
 ## Quick Start
 
 ```bash
-# Setup backend
+# Setup backend resources (creates S3 buckets and DynamoDB table)
 ./terraform/scripts/setup-backend.sh
 
-# Initialize dev environment
+# Initialize dev environment with remote state backend
 cd terraform/environments/dev
+terraform init  # Automatically uses backend.tf configuration
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars
+# Edit terraform.tfvars with your environment values
 
-terraform init
+# Plan and apply
 terraform plan
 terraform apply
 ```
+
+For staging or production environments, replace `dev` with `staging` or `production` in the above commands.
 
 ## Prerequisites
 

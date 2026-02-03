@@ -17,6 +17,13 @@ import (
 	"github.com/yourusername/clever-better/internal/service"
 )
 
+// Build information - set via ldflags
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+)
+
 var (
 	configFile  string
 	batchSize   int

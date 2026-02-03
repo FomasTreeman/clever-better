@@ -5,6 +5,8 @@
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org)
 [![Python Version](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Build Status](https://github.com/yourusername/clever-better/actions/workflows/deploy.yml/badge.svg)](https://github.com/yourusername/clever-better/actions/workflows/deploy.yml)
+[![Terraform](https://github.com/yourusername/clever-better/actions/workflows/terraform-validate.yml/badge.svg)](https://github.com/yourusername/clever-better/actions/workflows/terraform-validate.yml)
 
 ## Table of Contents
 
@@ -135,21 +137,46 @@ make db-health-check
 ### 5. Start Local Development Environment
 
 ```bash
+# Start all services (database, ML service, bot, data-ingestion)
 make docker-up
+
+# Or start with docker-compose directly
+docker-compose up -d
+
+# Check service health
+docker-compose ps
+
+# View logs
+docker-compose logs -f
 ```
 
-This starts any external services (configured in docker-compose.yml). Database should already be running from step 4.
+This starts all services including TimescaleDB, Redis, ML service, bot, and data-ingestion with proper health checks.
 
-### 6. Run Tests
+### 6. Verify Health Endpoints
+
+```bash
+# Check all health endpoints
+make health-check-local
+
+# Or manually
+curl http://localhost:8080/health  # Bot
+curl http://localhost:8000/health  # ML Service
+```
+
+### 7. Run Tests
 
 ```bash
 make test
 ```
 
-### 7. Build the Applications
+### 8. Build the Applications
 
 ```bash
+# Build with version information
 make build
+
+# Check version
+./bin/bot --version
 ```
 
 ## Database
@@ -294,7 +321,25 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for detailed development guidelin
 
 ## Deployment
 
-### AWS Deployment
+### CI/CD Pipeline
+
+The project uses GitHub Actions for automated deployments:
+
+- **Push to `main`**: Deploys to staging environment
+- **Push to `develop`**: Deploys to dev environment
+- **Create tag `v*.*.*`**: Deploys to production (requires approval)
+
+```mermaid
+flowchart LR
+    A[Push Code] --> B[Build & Test]
+    B --> C[Build Docker Images]
+    C --> D[Push to ECR]
+    D --> E[Terraform Apply]
+    E --> F[ECS Deployment]
+    F --> G[Health Checks]
+```
+
+### Manual AWS Deployment
 
 ```bash
 # Initialize Terraform
@@ -305,9 +350,22 @@ make tf-plan
 
 # Apply infrastructure
 make tf-apply
+
+# Deploy services
+make deploy-staging TAG=v1.0.0
 ```
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete deployment procedures.
+### Docker Build with Versioning
+
+```bash
+# Build images with version info
+make docker-build
+
+# Build and push to ECR
+ENV=staging TAG=v1.0.0 make ecr-push-all
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete deployment procedures including CI/CD pipeline architecture and troubleshooting.
 
 ## Security
 

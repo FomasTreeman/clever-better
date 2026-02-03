@@ -3,6 +3,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -15,12 +17,31 @@ import (
 	"github.com/yourusername/clever-better/internal/config"
 	"github.com/yourusername/clever-better/internal/datasource"
 	"github.com/yourusername/clever-better/internal/database"
+	"github.com/yourusername/clever-better/internal/health"
 	"github.com/yourusername/clever-better/internal/logger"
 	"github.com/yourusername/clever-better/internal/ml"
 	"github.com/yourusername/clever-better/internal/repository"
 )
 
+// Build information - set via ldflags
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildDate = "unknown"
+)
+
 func main() {
+	// Handle version flag
+	versionFlag := flag.Bool("version", false, "Print version information")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("Clever Better Trading Bot\n")
+		fmt.Printf("  Version:    %s\n", Version)
+		fmt.Printf("  Git Commit: %s\n", GitCommit)
+		fmt.Printf("  Build Date: %s\n", BuildDate)
+		os.Exit(0)
+	}
 	var (
 		cfg    *config.Config
 		err    error
@@ -60,6 +81,9 @@ func main() {
 	appLog.WithFields(logrus.Fields{
 		"environment": cfg.App.Environment,
 		"log_level":   cfg.App.LogLevel,
+		"version":     Version,
+		"commit":      GitCommit,
+		"build_date":  BuildDate,
 	}).Info("Clever Better Trading Bot starting")
 
 	// Initialize database connection
@@ -74,6 +98,26 @@ func main() {
 	}()
 
 	appLog.Info("Database connection established")
+
+	// Set up signal handling and context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start health check server
+	healthServer := health.NewServer(health.Config{
+		ServiceName: "bot",
+		Version:     Version,
+		Commit:      GitCommit,
+		Logger:      appLog,
+		DB:          db,
+	})
+
+	if err := healthServer.Start(ctx); err != nil {
+		appLog.WithError(err).Error("Failed to start health server")
+	} else {
+		appLog.Info("Health check server started")
+	}
+	defer healthServer.Shutdown()
 
 	// Run migrations if needed
 	// Note: In production, migrations should be run separately
@@ -165,12 +209,11 @@ func main() {
 		appLog.WithError(err).Fatal("Failed to create orchestrator")
 	}
 
-	// Set up signal handling for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Mark health server as ready
+	healthServer.SetReady(true)
 
 	// Start orchestrator
 	if err := orchestrator.Start(ctx); err != nil {

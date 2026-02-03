@@ -19,11 +19,11 @@ This document provides guidelines for developing Clever Better, including enviro
 
 ```bash
 # macOS
-brew install go python@3.11 docker docker-compose terraform migrate
+brew install go python@3.11 docker docker-compose terraform migrate jq
 
 # Ubuntu
 sudo apt update
-sudo apt install golang python3.11 docker.io docker-compose terraform golang-migrate
+sudo apt install golang python3.11 docker.io docker-compose terraform golang-migrate jq
 ```
 
 ### Initial Setup
@@ -727,4 +727,133 @@ ORDER BY time DESC;
 SELECT schemaname, tablename, attname, n_distinct, correlation
 FROM pg_stats
 WHERE tablename = 'odds_snapshots';
+```
+
+## Local Health Check Testing
+
+### Testing Health Endpoints
+
+The Go services expose health check endpoints for container orchestration:
+
+| Endpoint | Purpose | Response |
+|----------|---------|----------|
+| `/health` | Basic liveness | `{"status": "ok", "service": "bot"}` |
+| `/ready` | Readiness check (includes DB) | `{"status": "ok", "checks": {...}}` |
+| `/live` | Kubernetes liveness probe | `{"status": "ok"}` |
+
+### Quick Health Check
+
+```bash
+# Start services
+make docker-up
+
+# Test health endpoints
+make health-check-local
+
+# Or manually:
+curl -s http://localhost:8080/health | jq .
+curl -s http://localhost:8080/ready | jq .
+curl -s http://localhost:8000/health | jq .
+```
+
+### Health Check Script
+
+Use the provided script for CI/CD or debugging:
+
+```bash
+# Basic usage
+./scripts/health-check.sh http://localhost:8080/health
+
+# With custom timeout and retries
+./scripts/health-check.sh http://localhost:8080/health 10 5
+```
+
+## Testing Docker Builds Locally
+
+### Building with Version Information
+
+```bash
+# Build with version info
+make docker-build
+
+# Or with custom version
+VERSION=v1.2.3 make docker-build
+
+# Verify version embedded
+docker run --rm clever-better-bot:latest /app/bin/bot --version
+```
+
+### Testing the Full Stack
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Check service health
+docker-compose ps
+
+# View logs
+docker-compose logs -f bot
+
+# Run health checks
+make health-check-local
+
+# Tear down
+docker-compose down
+```
+
+### Building for CI
+
+```bash
+# Build binaries for Linux (CI target platform)
+make ci-build
+
+# Build Docker images with proper tags
+ENV=dev make ci-docker-build
+```
+
+## Running CI Pipeline Locally
+
+You can run the CI pipeline locally using [act](https://github.com/nektos/act):
+
+```bash
+# Install act
+brew install act  # macOS
+# or
+curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+# Run the build-test job
+act -j build-test
+
+# Run with secrets
+act -j build-test --secret-file .secrets
+
+# List available jobs
+act -l
+```
+
+### Secrets File Format (.secrets)
+
+```
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+SLACK_WEBHOOK_URL=https://hooks.slack.com/...
+```
+
+## Makefile Targets for Development
+
+```bash
+# Show all targets
+make help
+
+# Build with version info
+make build
+
+# Run tests with coverage
+make go-test
+
+# CI-specific targets
+make ci-test      # Run tests with CI output
+make ci-build     # Build Linux binaries
+make version      # Show version info
 ```

@@ -17,17 +17,37 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - clever-better-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: clever-better-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clever-better-network
 
   ml-service:
     build:
       context: ./ml-service
       dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
     container_name: clever-better-ml
     ports:
       - "8000:8000"
       - "50051:50051"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@timescaledb:5432/clever_better
+      REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
       LOG_LEVEL: INFO
       API_HOST: 0.0.0.0
@@ -36,24 +56,93 @@ services:
     depends_on:
       timescaledb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./ml-service/app:/app/app
       - ./ml-service/models:/app/models
       - ./ml-service/proto:/app/proto
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - clever-better-network
 
-  # Uncomment when bot Dockerfile is ready
-  # bot:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: clever-better-bot
-  #   environment:
-  #     DATABASE_URL: postgresql://postgres:postgres@timescaledb:5432/clever_better
-  #     ML_SERVICE_URL: http://ml-service:8000
-  #     ENVIRONMENT: development
-  #   depends_on:
-  #     - timescaledb
-  #     - ml-service
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    container_name: clever-better-bot
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@timescaledb:5432/clever_better
+      ML_SERVICE_URL: http://ml-service:8000
+      ML_SERVICE_GRPC_URL: ml-service:50051
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+      HEALTH_PORT: "8080"
+      LOG_LEVEL: info
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - clever-better-network
+
+  data-ingestion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    container_name: clever-better-data-ingestion
+    command: ["/app/bin/data-ingestion"]
+    ports:
+      - "8081:8080"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@timescaledb:5432/clever_better
+      ENVIRONMENT: development
+      HEALTH_PORT: "8080"
+      LOG_LEVEL: info
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    volumes:
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - clever-better-network
 
 volumes:
   timescale-data:
+  redis-data:
+
+networks:
+  clever-better-network:
+    driver: bridge
