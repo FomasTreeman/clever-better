@@ -1,24 +1,33 @@
 syntax = "proto3";
 
 package mlservice;
+option go_package = "github.com/yourusername/clever-better/internal/ml/mlpb;mlpb";
 
 service MLService {
   rpc GetPrediction (PredictionRequest) returns (PredictionResponse);
   rpc EvaluateStrategy (StrategyRequest) returns (StrategyResponse);
   rpc GetFeatures (FeatureRequest) returns (FeatureResponse);
   rpc HealthCheck (Empty) returns (HealthStatus);
+  rpc SubmitBacktestFeedback (BacktestFeedbackRequest) returns (BacktestFeedbackResponse);
+  rpc GenerateStrategy (StrategyGenerationRequest) returns (StrategyGenerationResponse);
+  rpc BatchPredict (BatchPredictionRequest) returns (BatchPredictionResponse);
 }
 
 message PredictionRequest {
   string race_id = 1;
   string strategy_id = 2;
   repeated double features = 3;
+  string runner_id = 4;
+  string model_version = 5;
 }
 
 message PredictionResponse {
   string race_id = 1;
   double predicted_probability = 2;
   double confidence = 3;
+  string runner_id = 4;
+  string recommendation = 5;
+  string model_version = 6;
 }
 
 message StrategyRequest {
@@ -44,3 +53,68 @@ message HealthStatus {
 }
 
 message Empty {}
+
+message BacktestFeedbackRequest {
+  string strategy_id = 1;
+  double composite_score = 2;
+  double sharpe_ratio = 3;
+  double roi = 4;
+  double max_drawdown = 5;
+  double win_rate = 6;
+  double profit_factor = 7;
+  int32 total_bets = 8;
+  map<string, double> ml_features = 9;
+  string method = 10;
+}
+
+message BacktestFeedbackResponse {
+  bool success = 1;
+  string message = 2;
+  string feedback_id = 3;
+}
+
+message StrategyGenerationRequest {
+  string risk_level = 1;  // "low", "medium", "high"
+  double target_return = 2;
+  double max_drawdown_limit = 3;
+  double min_win_rate = 4;
+  int32 max_candidates = 5;
+  map<string, double> aggregated_features = 6;
+  map<string, double> top_metrics = 7;
+}
+
+message StrategyGenerationResponse {
+  repeated GeneratedStrategy strategies = 1;
+}
+
+message GeneratedStrategy {
+  string strategy_id = 1;
+  map<string, double> parameters = 2;
+  double confidence = 3;
+  double expected_return = 4;
+  double expected_sharpe = 5;
+  double expected_win_rate = 6;
+}
+
+message BatchPredictionRequest {
+  repeated SinglePredictionRequest predictions = 1;
+}
+
+message SinglePredictionRequest {
+  string race_id = 1;
+  string runner_id = 2;
+  string strategy_id = 3;
+  repeated double features = 4;
+}
+
+message BatchPredictionResponse {
+  repeated SinglePredictionResponse predictions = 1;
+}
+
+message SinglePredictionResponse {
+  string race_id = 1;
+  string runner_id = 2;
+  double predicted_probability = 3;
+  double confidence = 4;
+  string recommendation = 5;
+}

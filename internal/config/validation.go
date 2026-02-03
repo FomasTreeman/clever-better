@@ -19,10 +19,10 @@ func NewValidator() *CustomValidator {
 	v := validator.New()
 
 	// Register custom validation functions
-	v.RegisterValidationFunc("environment", validateEnvironment)
-	v.RegisterValidationFunc("loglevel", validateLogLevel)
-	v.RegisterValidationFunc("markets", validateMarkets)
-	v.RegisterValidationFunc("datetime", validateDateTime)
+	_ = v.RegisterValidation("environment", validateEnvironment)
+	_ = v.RegisterValidation("loglevel", validateLogLevel)
+	_ = v.RegisterValidation("markets", validateMarkets)
+	_ = v.RegisterValidation("datetime", validateDateTime)
 
 	return &CustomValidator{validator: v}
 }

@@ -40,9 +40,13 @@ betfair:
 # =============================================================================
 ml_service:
   url: http://localhost:8000
+  http_address: http://localhost:8000
   grpc_address: localhost:50051
   timeout_seconds: 30
+  request_timeout_seconds: 30
   retry_attempts: 3
+  cache_ttl_seconds: 3600
+  cache_max_size: 10000
 
 # =============================================================================
 # Trading Configuration

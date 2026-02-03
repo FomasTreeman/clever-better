@@ -167,8 +167,15 @@ py-lint: ## Run Python linters
 	cd ml-service && mypy app/
 
 .PHONY: proto-gen
-proto-gen: ## Generate gRPC code for ML service
+proto-gen: proto-gen-go proto-gen-python ## Generate gRPC code for ML service (Go + Python)
+
+.PHONY: proto-gen-python
+proto-gen-python: ## Generate Python gRPC code only
 	cd ml-service && python -m grpc_tools.protoc -I proto --python_out=app/generated --grpc_python_out=app/generated proto/ml_service.proto
+
+.PHONY: proto-gen-go
+proto-gen-go: ## Generate Go gRPC code only
+	cd ml-service/proto && protoc --go_out=../../internal/ml/mlpb --go-grpc_out=../../internal/ml/mlpb --go_opt=paths=source_relative --go-grpc_opt=paths=source_relative ml_service.proto
 
 .PHONY: ml-test
 ml-test: ## Run ML service tests
@@ -361,6 +368,26 @@ clean: ## Clean build artifacts
 
 .PHONY: clean-all
 clean-all: clean docker-clean ## Clean everything including Docker
+
+# =============================================================================
+# ML Integration Targets
+# =============================================================================
+
+.PHONY: ml-feedback
+ml-feedback: ## Run ML feedback submission
+	go run cmd/ml-feedback/main.go
+
+.PHONY: strategy-discovery
+strategy-discovery: ## Run strategy discovery pipeline
+	go run cmd/strategy-discovery/main.go
+
+.PHONY: ml-status
+ml-status: ## Check ML service health and status
+	go run cmd/ml-status/main.go
+
+.PHONY: test-ml-integration
+test-ml-integration: ## Run ML integration tests
+	go test -v ./test/integration/ml_integration_test.go
 
 # =============================================================================
 # Documentation

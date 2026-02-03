@@ -50,10 +50,18 @@ type BetfairConfig struct {
 
 // MLServiceConfig represents ML service configuration
 type MLServiceConfig struct {
-	URL            string `mapstructure:"url" validate:"required,url"`
-	GRPCAddress    string `mapstructure:"grpc_address" validate:"required"`
-	TimeoutSeconds int    `mapstructure:"timeout_seconds" validate:"required,gt=0"`
-	RetryAttempts  int    `mapstructure:"retry_attempts" validate:"required,gte=0"`
+	URL                    string `mapstructure:"url" validate:"required,url"`
+	HTTPAddress            string `mapstructure:"http_address" validate:"required"`
+	GRPCAddress            string `mapstructure:"grpc_address" validate:"required"`
+	TimeoutSeconds         int    `mapstructure:"timeout_seconds" validate:"required,gt=0"`
+	RequestTimeoutSeconds  int    `mapstructure:"request_timeout_seconds" validate:"required,gt=0"`
+	RetryAttempts          int    `mapstructure:"retry_attempts" validate:"required,gte=0"`
+	CacheTTLSeconds        int    `mapstructure:"cache_ttl_seconds" validate:"required,gt=0"`
+	CacheMaxSize           int    `mapstructure:"cache_max_size" validate:"required,gt=0"`
+	EnableStrategyGeneration bool `mapstructure:"enable_strategy_generation"`
+	EnableFeedbackLoop     bool   `mapstructure:"enable_feedback_loop"`
+	FeedbackBatchSize      int    `mapstructure:"feedback_batch_size" validate:"required,gt=0"`
+	RetrainingIntervalHours int  `mapstructure:"retraining_interval_hours" validate:"required,gt=0"`
 }
 
 // TradingConfig represents trading strategy and risk management configuration

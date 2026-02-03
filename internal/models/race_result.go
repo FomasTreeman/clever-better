@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,7 +63,7 @@ func (rr *RaceResult) ParsePositions() (*PositionsData, error) {
 
 // Errors
 var (
-	ErrRaceResultNotFound    = NewValidationError("race_result_not_found", "race result not found")
-	ErrInvalidRaceResult     = NewValidationError("invalid_race_result", "invalid race result data")
-	ErrRaceResultDuplicate   = NewValidationError("race_result_duplicate", "race result already exists for this race")
+	ErrRaceResultNotFound    = fmt.Errorf("race result not found")
+	ErrInvalidRaceResult     = fmt.Errorf("invalid race result data")
+	ErrRaceResultDuplicate   = fmt.Errorf("race result already exists for this race")
 )

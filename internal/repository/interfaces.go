@@ -74,6 +74,10 @@ type PredictionRepository interface {
 	InsertBatch(ctx context.Context, predictions []*models.Prediction) error
 	GetByRaceID(ctx context.Context, raceID uuid.UUID) ([]*models.Prediction, error)
 	GetByModelID(ctx context.Context, modelID uuid.UUID, start, end time.Time) ([]*models.Prediction, error)
+	// ML Integration methods
+	Create(ctx context.Context, prediction *models.Prediction) error
+	GetRecentByStrategy(ctx context.Context, strategyID uuid.UUID, limit int) ([]*models.Prediction, error)
+	GetAccuracyMetrics(ctx context.Context, strategyID uuid.UUID, daysBack int) (float64, error)
 }
 
 // StrategyPerformanceRepository defines the interface for strategy performance data access
@@ -89,4 +93,9 @@ type BacktestResultRepository interface {
 	GetByStrategyID(ctx context.Context, strategyID uuid.UUID) ([]*models.BacktestResult, error)
 	GetLatest(ctx context.Context, limit int) ([]*models.BacktestResult, error)
 	GetByDateRange(ctx context.Context, start, end time.Time) ([]*models.BacktestResult, error)
+	// ML Integration methods
+	GetTopPerforming(ctx context.Context, limit int) ([]*models.BacktestResult, error)
+	GetRecentUnprocessed(ctx context.Context, limit int) ([]*models.BacktestResult, error)
+	MarkAsProcessed(ctx context.Context, resultID uuid.UUID) error
+	GetByCompositeScoreRange(ctx context.Context, minScore, maxScore float64, limit int) ([]*models.BacktestResult, error)
 }

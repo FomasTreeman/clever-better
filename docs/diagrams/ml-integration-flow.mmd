@@ -1,0 +1,50 @@
+graph TD
+    A["Strategy Discovery Pipeline"] --> B["Submit Backtest Feedback"]
+    B --> C["Batch Feedback Collection"]
+    C --> D["ML Feedback Service"]
+    D --> E["Python ML Service"]
+    
+    E --> F["Check Feedback Count"]
+    F -->|Sufficient| G["Trigger Model Retraining"]
+    F -->|Insufficient| H["Continue"]
+    
+    G --> I["Train All Models"]
+    I --> J["Update MLflow Registry"]
+    
+    A --> K["Generate New Strategies"]
+    K --> L["Constraint-Based Generation"]
+    L --> M["ML Model (StrategyGenerator)"]
+    M --> N["Python gRPC Server"]
+    N --> O["Generated Strategies"]
+    
+    O --> P["Evaluate Generated Strategies"]
+    P --> Q["Backtest Each Strategy"]
+    Q --> R["Calculate Composite Score"]
+    R --> S["Compare with Threshold"]
+    
+    S -->|Score > Threshold| T["Activate Strategy"]
+    S -->|Score < Threshold| U["Reject Strategy"]
+    
+    T --> V["Update Strategy Status"]
+    U --> W["Log Rejection"]
+    
+    A --> X["Rank Active Strategies"]
+    X --> Y["Fetch All Active Strategies"]
+    Y --> Z["Evaluate Each Strategy"]
+    Z --> AA["ML Evaluation + Backtest Score"]
+    AA --> AB["Sort by Composite Score"]
+    
+    AB --> AC["Top Performers"]
+    AC --> AD["Deactivate Underperformers"]
+    AD --> AE["Mark Low-Scoring Inactive"]
+    
+    V --> AF["Update Rankings"]
+    AE --> AF
+    
+    AF --> AG["Pipeline Complete"]
+    AG --> AH["Generate Report"]
+    
+    style A fill:#e1f5ff
+    style E fill:#fff3e0
+    style N fill:#fff3e0
+    style AG fill:#c8e6c9
