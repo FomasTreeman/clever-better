@@ -1,0 +1,11 @@
+output "vpc_id" { value = module.vpc.vpc_id }
+output "public_subnet_ids" { value = module.vpc.public_subnet_ids }
+output "private_app_subnet_ids" { value = module.vpc.private_app_subnet_ids }
+output "private_data_subnet_ids" { value = module.vpc.private_data_subnet_ids }
+output "alb_security_group_id" { value = module.security.alb_security_group_id }
+output "application_security_group_id" { value = module.security.application_security_group_id }
+output "database_security_group_id" { value = module.security.database_security_group_id }
+output "waf_web_acl_arn" { value = module.waf.web_acl_arn }
+output "bot_task_role_arn" { value = module.iam.bot_task_role_arn }
+output "ml_task_role_arn" { value = module.iam.ml_service_task_role_arn }
+output "database_secret_arn" { value = module.secrets.database_secret_arn }

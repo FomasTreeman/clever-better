@@ -1,0 +1,7 @@
+aws_region = "us-east-1"
+environment = "staging"
+vpc_cidr = "10.1.0.0/16"
+enable_nat_gateway = true
+enable_waf_logging = true
+waf_rate_limit = 3000
+alarm_email = "staging-alerts@example.com"

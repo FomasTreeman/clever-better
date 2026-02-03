@@ -260,6 +260,56 @@ tf-fmt: ## Format Terraform files
 tf-validate: ## Validate Terraform configuration
 	cd terraform/environments/dev && terraform validate
 
+.PHONY: tf-init-all
+tf-init-all: ## Initialize Terraform for all environments
+	cd terraform/environments/dev && terraform init
+	cd terraform/environments/staging && terraform init
+	cd terraform/environments/production && terraform init
+
+.PHONY: tf-validate-all
+tf-validate-all: ## Validate Terraform for all environments
+	./terraform/scripts/validate-all.sh
+
+.PHONY: tf-plan-dev
+tf-plan-dev: ## Plan Terraform for dev
+	cd terraform/environments/dev && terraform plan
+
+.PHONY: tf-plan-staging
+tf-plan-staging: ## Plan Terraform for staging
+	cd terraform/environments/staging && terraform plan
+
+.PHONY: tf-plan-prod
+tf-plan-prod: ## Plan Terraform for production
+	cd terraform/environments/production && terraform plan
+
+.PHONY: tf-apply-dev
+tf-apply-dev: ## Apply Terraform for dev
+	cd terraform/environments/dev && terraform apply
+
+.PHONY: tf-apply-staging
+tf-apply-staging: ## Apply Terraform for staging
+	cd terraform/environments/staging && terraform apply
+
+.PHONY: tf-apply-prod
+tf-apply-prod: ## Apply Terraform for production
+	cd terraform/environments/production && terraform apply
+
+.PHONY: tf-output-dev
+tf-output-dev: ## Show Terraform outputs for dev
+	cd terraform/environments/dev && terraform output
+
+.PHONY: tf-output-staging
+tf-output-staging: ## Show Terraform outputs for staging
+	cd terraform/environments/staging && terraform output
+
+.PHONY: tf-output-prod
+tf-output-prod: ## Show Terraform outputs for production
+	cd terraform/environments/production && terraform output
+
+.PHONY: tf-setup-backend
+tf-setup-backend: ## Setup Terraform backend
+	./terraform/scripts/setup-backend.sh
+
 # =============================================================================
 # Database Targets
 # =============================================================================

@@ -1,0 +1,11 @@
+aws_region = "us-east-1"
+environment = "production"
+vpc_cidr = "10.2.0.0/16"
+enable_nat_gateway = true
+enable_flow_logs = true
+flow_logs_retention_days = 90
+enable_waf_logging = true
+waf_rate_limit = 2000
+enable_geo_blocking = false
+allowed_countries = ["GB", "IE"]
+alarm_email = "prod-alerts@example.com"

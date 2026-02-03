@@ -1,0 +1,27 @@
+# Backend configuration template
+#
+# 1) Create backend resources (S3 + DynamoDB) using scripts in terraform/scripts/
+# 2) Copy this file to backend.tf and update the bucket name
+# 3) Run terraform init in the target environment directory
+#
+# Naming convention:
+#   S3 bucket: clever-better-terraform-state-{environment}
+#   DynamoDB:  clever-better-terraform-locks
+#
+# Example:
+#   bucket = "clever-better-terraform-state-dev"
+#
+terraform {
+  backend "s3" {
+    bucket         = "clever-better-terraform-state-{environment}"
+    key            = "terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "clever-better-terraform-locks"
+    encrypt        = true
+
+    # Server-side encryption
+    sse_algorithm = "AES256"
+
+    # Versioning and lifecycle are configured on the bucket itself
+  }
+}

@@ -1,0 +1,49 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform plan (dev)
+        run: |
+          cd terraform/environments/dev
+          terraform init -backend=false
+          terraform plan -no-color | tee $GITHUB_WORKSPACE/plan-dev.txt
+      - name: Terraform plan (staging)
+        run: |
+          cd terraform/environments/staging
+          terraform init -backend=false
+          terraform plan -no-color | tee $GITHUB_WORKSPACE/plan-staging.txt
+      - name: Terraform plan (production)
+        run: |
+          cd terraform/environments/production
+          terraform init -backend=false
+          terraform plan -no-color | tee $GITHUB_WORKSPACE/plan-prod.txt
+      - name: Post plan to PR
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## Terraform Plan
+
+            **Dev**
+            ```
+            ${{ steps.plan-dev.outputs.stdout }}
+            ```
+
+            **Staging**
+            ```
+            ${{ steps.plan-staging.outputs.stdout }}
+            ```
+
+            **Production**
+            ```
+            ${{ steps.plan-prod.outputs.stdout }}
+            ```
