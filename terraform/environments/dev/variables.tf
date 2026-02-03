@@ -41,17 +41,67 @@ variable "alarm_email" {
 
 variable "rds_instance_class" {
   type        = string
-  default     = "db.t4g.medium"  # Smaller instance for dev
+  default     = "db.t4g.medium" # Smaller instance for dev
   description = "RDS instance class"
 }
 
 variable "rds_multi_az" {
   type        = bool
-  default     = false  # Single AZ for dev to save costs
+  default     = false # Single AZ for dev to save costs
   description = "Enable Multi-AZ for RDS"
 }
 
 variable "acm_certificate_arn" {
   type        = string
   description = "ACM certificate ARN for HTTPS"
+}
+
+# =============================================================================
+# Container Image Tags
+# =============================================================================
+
+variable "bot_image_tag" {
+  type        = string
+  default     = "latest"
+  description = "Bot container image tag"
+}
+
+variable "ml_image_tag" {
+  type        = string
+  default     = "latest"
+  description = "ML service container image tag"
+}
+
+variable "data_ingestion_image_tag" {
+  type        = string
+  default     = "latest"
+  description = "Data ingestion container image tag"
+}
+
+# =============================================================================
+# Container Resource Allocation
+# =============================================================================
+
+variable "bot_cpu" {
+  type        = number
+  default     = 512
+  description = "Bot task CPU units"
+}
+
+variable "bot_memory" {
+  type        = number
+  default     = 1024
+  description = "Bot task memory (MB)"
+}
+
+variable "ml_cpu" {
+  type        = number
+  default     = 1024
+  description = "ML service task CPU units"
+}
+
+variable "ml_memory" {
+  type        = number
+  default     = 2048
+  description = "ML service task memory (MB)"
 }

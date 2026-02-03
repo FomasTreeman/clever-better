@@ -1,23 +1,61 @@
+# Build artifacts
+bin/
+dist/
+*.exe
+*.test
+*.out
+
+# Version control
 .git
-.github
-.vscode
-.idea
-*.md
-!README.md
-docs/
-test/
-*.log
-.env
-.env.local
-.env.*.local
+.gitignore
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Terraform (managed separately)
+terraform/
 *.tfstate
 *.tfstate.*
 .terraform/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+test/
+*_test.go
 coverage.out
 coverage.html
+
+# ML Service (has its own Dockerfile)
+ml-service/
+
+# Local development files
+.env
+.env.local
+.env.*.local
+*.local
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Python artifacts (from ml-service)
 __pycache__/
 *.pyc
 .pytest_cache/
 .mypy_cache/
 venv/
 .venv/
+
+# Miscellaneous
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

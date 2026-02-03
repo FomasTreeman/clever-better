@@ -1,14 +1,36 @@
-aws_region = "us-east-1"
+# =============================================================================
+# Dev Environment Configuration
+# Copy this file to terraform.tfvars and fill in the values
+# =============================================================================
+
 environment = "dev"
-vpc_cidr = "10.0.0.0/16"
+aws_region  = "us-east-1"
+
+# VPC Configuration
+vpc_cidr           = "10.0.0.0/16"
 enable_nat_gateway = true
-enable_waf_logging = false
-waf_rate_limit = 5000
-alarm_email = "dev-alerts@example.com"
 
 # RDS Configuration
 rds_instance_class = "db.t4g.medium"
 rds_multi_az       = false
 
-# ACM Certificate (must be created beforehand)
-acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxx"
+# WAF Configuration
+waf_rate_limit     = 5000
+enable_waf_logging = false
+
+# ECS Container Image Tags
+bot_image_tag            = "latest"
+ml_image_tag             = "latest"
+data_ingestion_image_tag = "latest"
+
+# Container Resources (dev - smaller)
+bot_cpu    = 512
+bot_memory = 1024
+ml_cpu     = 1024
+ml_memory  = 2048
+
+# Monitoring
+alarm_email = "dev-alerts@example.com"
+
+# ACM Certificate (must be created manually in AWS Console)
+acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

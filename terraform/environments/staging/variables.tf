@@ -55,3 +55,53 @@ variable "acm_certificate_arn" {
   type        = string
   description = "ACM certificate ARN for HTTPS"
 }
+
+# =============================================================================
+# Container Image Tags
+# =============================================================================
+
+variable "bot_image_tag" {
+  type        = string
+  default     = "latest"
+  description = "Bot container image tag"
+}
+
+variable "ml_image_tag" {
+  type        = string
+  default     = "latest"
+  description = "ML service container image tag"
+}
+
+variable "data_ingestion_image_tag" {
+  type        = string
+  default     = "latest"
+  description = "Data ingestion container image tag"
+}
+
+# =============================================================================
+# Container Resource Allocation
+# =============================================================================
+
+variable "bot_cpu" {
+  type        = number
+  default     = 512
+  description = "Bot task CPU units"
+}
+
+variable "bot_memory" {
+  type        = number
+  default     = 1024
+  description = "Bot task memory (MB)"
+}
+
+variable "ml_cpu" {
+  type        = number
+  default     = 1024
+  description = "ML service task CPU units"
+}
+
+variable "ml_memory" {
+  type        = number
+  default     = 2048
+  description = "ML service task memory (MB)"
+}

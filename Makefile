@@ -466,3 +466,86 @@ security: go-sec py-sec ## Run all security scanners
 audit: ## Audit dependencies for vulnerabilities
 	go list -json -m all | nancy sleuth
 	cd ml-service && safety check -r requirements.txt
+
+# =============================================================================
+# ECR Targets
+# =============================================================================
+
+AWS_REGION ?= us-east-1
+AWS_ACCOUNT_ID := $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null)
+ECR_REGISTRY := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+ENV ?= dev
+
+.PHONY: ecr-login
+ecr-login: ## Login to ECR
+	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(ECR_REGISTRY)
+
+.PHONY: ecr-push-bot
+ecr-push-bot: ecr-login ## Build and push bot image to ECR
+	docker build -t $(PROJECT_NAME)-$(ENV)-bot:$(TAG) -f Dockerfile .
+	docker tag $(PROJECT_NAME)-$(ENV)-bot:$(TAG) $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-bot:$(TAG)
+	docker push $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-bot:$(TAG)
+
+.PHONY: ecr-push-ml
+ecr-push-ml: ecr-login ## Build and push ML service image to ECR
+	docker build -t $(PROJECT_NAME)-$(ENV)-ml-service:$(TAG) -f ml-service/Dockerfile ml-service/
+	docker tag $(PROJECT_NAME)-$(ENV)-ml-service:$(TAG) $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-ml-service:$(TAG)
+	docker push $(ECR_REGISTRY)/$(PROJECT_NAME)-$(ENV)-ml-service:$(TAG)
+
+.PHONY: ecr-push-all
+ecr-push-all: ecr-push-bot ecr-push-ml ## Push all images to ECR
+
+# =============================================================================
+# Deployment Targets
+# =============================================================================
+
+TAG ?= latest
+SERVICE ?= all
+
+.PHONY: deploy-dev
+deploy-dev: ## Deploy to dev environment
+	./terraform/scripts/deploy-service.sh dev $(SERVICE) $(TAG)
+
+.PHONY: deploy-staging
+deploy-staging: ## Deploy to staging environment
+	./terraform/scripts/deploy-service.sh staging $(SERVICE) $(TAG)
+
+.PHONY: deploy-prod
+deploy-prod: ## Deploy to production environment
+	./terraform/scripts/deploy-service.sh production $(SERVICE) $(TAG)
+
+.PHONY: deploy-service
+deploy-service: ## Deploy specific service (use: make deploy-service ENV=dev SERVICE=bot TAG=v1.0.0)
+	./terraform/scripts/deploy-service.sh $(ENV) $(SERVICE) $(TAG)
+
+# =============================================================================
+# Rollback Targets
+# =============================================================================
+
+.PHONY: rollback-dev
+rollback-dev: ## Rollback dev deployment (use: make rollback-dev SERVICE=bot)
+	./terraform/scripts/rollback-service.sh dev $(SERVICE)
+
+.PHONY: rollback-staging
+rollback-staging: ## Rollback staging deployment (use: make rollback-staging SERVICE=bot)
+	./terraform/scripts/rollback-service.sh staging $(SERVICE)
+
+.PHONY: rollback-prod
+rollback-prod: ## Rollback production deployment (use: make rollback-prod SERVICE=bot)
+	./terraform/scripts/rollback-service.sh production $(SERVICE)
+
+# =============================================================================
+# Deployment Validation
+# =============================================================================
+
+.PHONY: validate-dev
+validate-dev: ## Validate dev deployment
+	./terraform/scripts/validate-deployment.sh dev
+
+.PHONY: validate-staging
+validate-staging: ## Validate staging deployment
+	./terraform/scripts/validate-deployment.sh staging
+
+.PHONY: validate-prod
+validate-prod: ## Validate production deployment
+	./terraform/scripts/validate-deployment.sh production

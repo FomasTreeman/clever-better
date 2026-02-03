@@ -1,18 +1,40 @@
-aws_region = "us-east-1"
+# =============================================================================
+# Production Environment Configuration
+# Copy this file to terraform.tfvars and fill in the values
+# =============================================================================
+
 environment = "production"
-vpc_cidr = "10.2.0.0/16"
-enable_nat_gateway = true
-enable_flow_logs = true
+aws_region  = "us-east-1"
+
+# VPC Configuration
+vpc_cidr                 = "10.2.0.0/16"
+enable_nat_gateway       = true
+enable_flow_logs         = true
 flow_logs_retention_days = 90
-enable_waf_logging = true
-waf_rate_limit = 2000
-enable_geo_blocking = false
-allowed_countries = ["GB", "IE"]
-alarm_email = "prod-alerts@example.com"
 
 # RDS Configuration
 rds_instance_class = "db.r6g.large"
 rds_multi_az       = true
 
-# ACM Certificate (must be created beforehand)
-acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxx"
+# WAF Configuration
+waf_rate_limit      = 2000
+enable_waf_logging  = true
+enable_geo_blocking = false
+allowed_countries   = ["GB", "IE"]
+
+# ECS Container Image Tags (use specific versions in production!)
+bot_image_tag            = "v1.0.0"
+ml_image_tag             = "v1.0.0"
+data_ingestion_image_tag = "v1.0.0"
+
+# Container Resources (production - higher)
+bot_cpu    = 1024
+bot_memory = 2048
+ml_cpu     = 2048
+ml_memory  = 4096
+
+# Monitoring
+alarm_email = "prod-alerts@example.com"
+
+# ACM Certificate (must be created manually in AWS Console)
+acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
