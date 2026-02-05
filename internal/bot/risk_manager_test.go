@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/yourusername/clever-better/internal/config"
 	"github.com/yourusername/clever-better/internal/models"
 )
@@ -48,6 +49,9 @@ func (m *MockBetRepository) GetByStrategyID(ctx context.Context, strategyID uuid
 }
 
 func (m *MockBetRepository) Update(ctx context.Context, bet *models.Bet) error {
+	if bet != nil {
+		_ = bet.UpdatedAt
+	}
 	args := m.Called(ctx, bet)
 	return args.Error(0)
 }
@@ -327,4 +331,154 @@ func TestGetRiskMetrics(t *testing.T) {
 	assert.Equal(t, 500.0, metrics.MaxExposure)
 	assert.Equal(t, 200.0, metrics.MaxDailyLoss)
 	assert.Equal(t, 250.0, metrics.RemainingCapacity) // 500 - 250
+}
+
+func TestCheckRiskLimitsTable(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	cfg := &config.TradingConfig{
+		MaxStakePerBet: 100.0,
+		MaxExposure:    500.0,
+		MaxDailyLoss:   200.0,
+	}
+
+	mockRepo := new(MockBetRepository)
+	rm := NewRiskManager(cfg, mockRepo, logger)
+	rm.dailyLossResetTime = time.Now().Add(1 * time.Hour)
+
+	tests := []struct {
+		name          string
+		currentExposure float64
+		dailyLoss     float64
+		stake         float64
+		expectError   bool
+	}{
+		{
+			name:            "Exceeds max stake",
+			currentExposure: 0,
+			dailyLoss:       0,
+			stake:           150.0,
+			expectError:     true,
+		},
+		{
+			name:            "Exceeds max exposure",
+			currentExposure: 480.0,
+			dailyLoss:       0,
+			stake:           30.0,
+			expectError:     true,
+		},
+		{
+			name:            "Exceeds daily loss",
+			currentExposure: 0,
+			dailyLoss:       250.0,
+			stake:           10.0,
+			expectError:     true,
+		},
+		{
+			name:            "Within limits",
+			currentExposure: 100.0,
+			dailyLoss:       50.0,
+			stake:           25.0,
+			expectError:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rm.currentExposure = tt.currentExposure
+			rm.dailyLoss = tt.dailyLoss
+
+			err := rm.CheckRiskLimits(context.Background(), tt.stake)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCalculatePositionSizeMinimumStake(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	cfg := &config.TradingConfig{
+		MaxStakePerBet: 100.0,
+		MaxExposure:    500.0,
+		MaxDailyLoss:   200.0,
+	}
+
+	mockRepo := new(MockBetRepository)
+	rm := NewRiskManager(cfg, mockRepo, logger)
+
+	stake, err := rm.CalculatePositionSize(2.0, 50.0, 0.55, 0.1)
+	require.NoError(t, err)
+	assert.Equal(t, 0.0, stake, "stake below minimum should be zero")
+}
+
+func TestUpdateExposureError(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	cfg := &config.TradingConfig{
+		MaxStakePerBet: 100.0,
+		MaxExposure:    500.0,
+		MaxDailyLoss:   200.0,
+	}
+
+	mockRepo := new(MockBetRepository)
+	rm := NewRiskManager(cfg, mockRepo, logger)
+
+	ctx := context.Background()
+	mockRepo.On("GetPendingBets", ctx).Return(nil, assert.AnError)
+
+	err := rm.UpdateExposure(ctx)
+	assert.Error(t, err)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestUpdateDailyLossError(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	cfg := &config.TradingConfig{
+		MaxStakePerBet: 100.0,
+		MaxExposure:    500.0,
+		MaxDailyLoss:   200.0,
+	}
+
+	mockRepo := new(MockBetRepository)
+	rm := NewRiskManager(cfg, mockRepo, logger)
+
+	ctx := context.Background()
+	mockRepo.On("GetSettledBets", ctx, mock.Anything, mock.Anything).Return(nil, assert.AnError)
+
+	err := rm.UpdateDailyLoss(ctx)
+	assert.Error(t, err)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestCheckRiskLimitsResetsDailyLoss(t *testing.T) {
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
+
+	cfg := &config.TradingConfig{
+		MaxStakePerBet: 100.0,
+		MaxExposure:    500.0,
+		MaxDailyLoss:   200.0,
+	}
+
+	mockRepo := new(MockBetRepository)
+	rm := NewRiskManager(cfg, mockRepo, logger)
+
+	ctx := context.Background()
+	rm.dailyLossResetTime = time.Now().Add(-1 * time.Hour)
+
+	mockRepo.On("GetSettledBets", ctx, mock.Anything, mock.Anything).Return([]*models.Bet{}, nil)
+
+	err := rm.CheckRiskLimits(ctx, 10.0)
+	assert.NoError(t, err)
+	assert.True(t, rm.dailyLossResetTime.After(time.Now()))
+	mockRepo.AssertExpectations(t)
 }

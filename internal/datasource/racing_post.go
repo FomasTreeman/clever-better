@@ -75,7 +75,7 @@ func NewRacingPostClient(httpClient *RateLimitedHTTPClient, apiKey string, enabl
 // FetchRaces retrieves races within the specified date range
 func (c *RacingPostClient) FetchRaces(ctx context.Context, startDate, endDate time.Time) ([]RaceData, error) {
 	if !c.enabled {
-		return nil, NewDataSourceError("racing_post", ErrCodeNetworkError, "data source disabled", nil)
+		return nil, NewDataSourceError("racing_post", ErrCodeNetworkError, dataSourceDisabledMsg, nil)
 	}
 
 	url := fmt.Sprintf("%s/races?from=%s&to=%s", c.baseURL, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
@@ -132,7 +132,7 @@ func (c *RacingPostClient) FetchRaces(ctx context.Context, startDate, endDate ti
 // FetchRaceDetails retrieves detailed information for a specific race
 func (c *RacingPostClient) FetchRaceDetails(ctx context.Context, raceID string) (*RaceData, error) {
 	if !c.enabled {
-		return nil, NewDataSourceError("racing_post", ErrCodeNetworkError, "data source disabled", nil)
+		return nil, NewDataSourceError("racing_post", ErrCodeNetworkError, dataSourceDisabledMsg, nil)
 	}
 
 	url := fmt.Sprintf("%s/races/%s", c.baseURL, raceID)

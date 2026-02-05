@@ -6,20 +6,30 @@ import (
 	"time"
 )
 
+const (
+	testRaceName    = "Test Race"
+	testHorseName   = "Test Horse"
+	testEventID     = "12345"
+	testSelectionID = "54321"
+	testTrack       = "Wimbledon"
+	testPrice       = 3.50
+	testVolume      = 1000.0
+)
+
 // TestDataValidatorValid tests validation of correct data
 func TestDataValidatorValid(t *testing.T) {
 	validator := NewDataValidator(nil)
 
 	record := &Record{
-		EventID:    "12345",
-		EventName:  "Test Race",
-		Track:      "Wimbledon",
+		EventID:    testEventID,
+		EventName:  testRaceName,
+		Track:      testTrack,
 		StartTime:  time.Now().Add(1 * time.Hour),
 		Selection: &Selection{
-			ID:     "54321",
-			Name:   "Test Horse",
-			Price:  3.50,
-			Volume: 1000.0,
+			ID:     testSelectionID,
+			Name:   testHorseName,
+			Price:  testPrice,
+			Volume: testVolume,
 		},
 	}
 
@@ -49,15 +59,15 @@ func TestDataValidatorInvalidPrice(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			record := &Record{
-				EventID:   "12345",
-				EventName: "Test Race",
-				Track:     "Wimbledon",
+				EventID:   testEventID,
+				EventName: testRaceName,
+				Track:     testTrack,
 				StartTime: time.Now().Add(1 * time.Hour),
 				Selection: &Selection{
-					ID:     "54321",
-					Name:   "Test Horse",
+					ID:     testSelectionID,
+					Name:   testHorseName,
 					Price:  tt.price,
-					Volume: 1000.0,
+					Volume: testVolume,
 				},
 			}
 
@@ -75,15 +85,15 @@ func TestDataValidatorInvalidStartTime(t *testing.T) {
 
 	// Test past event (more than 30 days old)
 	record := &Record{
-		EventID:    "12345",
-		EventName:  "Test Race",
-		Track:      "Wimbledon",
+		EventID:    testEventID,
+		EventName:  testRaceName,
+		Track:      testTrack,
 		StartTime:  time.Now().Add(-31 * 24 * time.Hour),
 		Selection: &Selection{
-			ID:     "54321",
-			Name:   "Test Horse",
-			Price:  3.50,
-			Volume: 1000.0,
+			ID:     testSelectionID,
+			Name:   testHorseName,
+			Price:  testPrice,
+			Volume: testVolume,
 		},
 	}
 
@@ -179,8 +189,8 @@ func TestIngestionMetrics(t *testing.T) {
 func TestBetfairCSVParserValidFormat(t *testing.T) {
 	parser := NewBetfairCSVParser(nil)
 
-	csvData := `event_id,event_name,track,start_time,selection_id,selection_name,price,volume
-12345,Test Race,Wimbledon,2024-01-01T14:00:00Z,54321,Test Horse,3.50,1000.0`
+	csvData := "event_id,event_name,track,start_time,selection_id,selection_name,price,volume\n" +
+		"12345," + testRaceName + ",Wimbledon,2024-01-01T14:00:00Z,54321," + testHorseName + ",3.50,1000.0"
 
 	records, err := parser.Parse([]byte(csvData))
 	if err != nil {
@@ -240,15 +250,15 @@ func BenchmarkDataValidator(b *testing.B) {
 	validator := NewDataValidator(nil)
 
 	record := &Record{
-		EventID:    "12345",
-		EventName:  "Test Race",
-		Track:      "Wimbledon",
+		EventID:    testEventID,
+		EventName:  testRaceName,
+		Track:      testTrack,
 		StartTime:  time.Now().Add(1 * time.Hour),
 		Selection: &Selection{
-			ID:     "54321",
-			Name:   "Test Horse",
-			Price:  3.50,
-			Volume: 1000.0,
+			ID:     testSelectionID,
+			Name:   testHorseName,
+			Price:  testPrice,
+			Volume: testVolume,
 		},
 	}
 
@@ -263,15 +273,15 @@ func BenchmarkDataNormalizer(b *testing.B) {
 	normalizer := NewDataNormalizer(nil)
 
 	record := &Record{
-		EventID:    "12345",
-		EventName:  "Test Race",
-		Track:      "Wimbledon",
+		EventID:    testEventID,
+		EventName:  testRaceName,
+		Track:      testTrack,
 		StartTime:  time.Now().Add(1 * time.Hour),
 		Selection: &Selection{
-			ID:     "54321",
-			Name:   "Test Horse",
-			Price:  3.50,
-			Volume: 1000.0,
+			ID:     testSelectionID,
+			Name:   testHorseName,
+			Price:  testPrice,
+			Volume: testVolume,
 		},
 	}
 

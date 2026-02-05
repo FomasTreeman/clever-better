@@ -130,6 +130,26 @@ func (c *MarketDataCollector) onMessage(msg interface{}) error {
 	return nil
 }
 
+// extractMarketChangePrices extracts prices from a runner change and updates the snapshot
+func (c *MarketDataCollector) extractMarketChangePrices(snapshot *models.OddsSnapshot, runner *Runner) {
+	// Extract back prices
+	if len(runner.BackPrices) > 0 {
+		snapshot.BackPrice = runner.BackPrices[0].Price
+		snapshot.BackSize = runner.BackPrices[0].Size
+	}
+
+	// Extract lay prices
+	if len(runner.LayPrices) > 0 {
+		snapshot.LayPrice = runner.LayPrices[0].Price
+		snapshot.LaySize = runner.LayPrices[0].Size
+	}
+
+	// Extract traded volume
+	if len(runner.TradeVolume) > 0 {
+		snapshot.TradedVolume = runner.TradeVolume[0].Size
+	}
+}
+
 // processMarketChanges converts market change messages to odds snapshots
 func (c *MarketDataCollector) processMarketChanges(changes []MarketChange) error {
 	now := time.Now()
@@ -145,22 +165,8 @@ func (c *MarketDataCollector) processMarketChanges(changes []MarketChange) error
 				Timestamp:   now,
 			}
 
-			// Extract back prices
-			if len(runner.BackPrices) > 0 {
-				snapshot.BackPrice = runner.BackPrices[0].Price
-				snapshot.BackSize = runner.BackPrices[0].Size
-			}
-
-			// Extract lay prices
-			if len(runner.LayPrices) > 0 {
-				snapshot.LayPrice = runner.LayPrices[0].Price
-				snapshot.LaySize = runner.LayPrices[0].Size
-			}
-
-			// Extract traded volume
-			if len(runner.TradeVolume) > 0 {
-				snapshot.TradedVolume = runner.TradeVolume[0].Size
-			}
+			// Extract prices
+			c.extractMarketChangePrices(snapshot, &runner)
 
 			c.buffer = append(c.buffer, snapshot)
 

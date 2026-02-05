@@ -12,6 +12,8 @@ import (
 	"github.com/yourusername/clever-better/internal/repository"
 )
 
+const dateLayout = "2006-01-02"
+
 // MarketDataService handles storing historical market data for backtesting
 type MarketDataService struct {
 	betfairClient    *betfair.BetfairClient
@@ -48,7 +50,7 @@ func (m *MarketDataService) FetchAndStoreMarketData(
 	startDate time.Time,
 	endDate time.Time,
 ) error {
-	m.logger.Printf("Fetching market data from %s to %s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	m.logger.Printf("Fetching market data from %s to %s", startDate.Format(dateLayout), endDate.Format(dateLayout))
 
 	// Get greyhound racing markets
 	catalogs, err := m.betfairClient.ListGreyhoundRaceMarkets(ctx)
@@ -130,6 +132,45 @@ func (m *MarketDataService) storeMarketCatalog(ctx context.Context, catalog *bet
 }
 
 // storeHistoricalPrices stores historical odds data
+// findRunnerIDBySourceID finds the runner ID matching the given selection ID
+func (m *MarketDataService) findRunnerIDBySourceID(
+	ctx context.Context,
+	raceID uuid.UUID,
+	selectionID int64,
+) (uuid.UUID, error) {
+	runners, err := m.runnerRepository.GetByRaceID(ctx, raceID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	for _, r := range runners {
+		if r.SourceID == fmt.Sprintf("%d", selectionID) {
+			return r.ID, nil
+		}
+	}
+
+	return uuid.Nil, nil
+}
+
+// extractPricesFromRunner extracts back and lay prices from a runner
+func extractPricesFromRunner(runner *betfair.RunnerBook) (backPrice, backSize, layPrice, laySize, tradedVolume float64) {
+	if len(runner.ExchangePrices.AvailableToBack) > 0 {
+		backPrice = runner.ExchangePrices.AvailableToBack[0].Price
+		backSize = runner.ExchangePrices.AvailableToBack[0].Size
+	}
+
+	if len(runner.ExchangePrices.AvailableToLay) > 0 {
+		layPrice = runner.ExchangePrices.AvailableToLay[0].Price
+		laySize = runner.ExchangePrices.AvailableToLay[0].Size
+	}
+
+	if len(runner.ExchangePrices.TradedVolume) > 0 {
+		tradedVolume = runner.ExchangePrices.TradedVolume[0].Size
+	}
+
+	return
+}
+
 func (m *MarketDataService) storeHistoricalPrices(
 	ctx context.Context,
 	marketID string,
@@ -153,57 +194,27 @@ func (m *MarketDataService) storeHistoricalPrices(
 	snapshots := make([]*models.OddsSnapshot, 0, len(book.Runners))
 
 	for _, runner := range book.Runners {
-		// Get runner ID from database
-		runners, err := m.runnerRepository.GetByRaceID(ctx, raceID)
-		if err != nil {
-			continue
-		}
-
-		var runnerID uuid.UUID
-		for _, r := range runners {
-			if r.SourceID == fmt.Sprintf("%d", runner.SelectionID) {
-				runnerID = r.ID
-				break
-			}
-		}
-
-		if runnerID == uuid.Nil {
+		// Find runner ID from database
+		runnerID, err := m.findRunnerIDBySourceID(ctx, raceID, runner.SelectionID)
+		if err != nil || runnerID == uuid.Nil {
 			continue
 		}
 
 		// Extract prices
-		backPrice := 0.0
-		backSize := 0.0
-		layPrice := 0.0
-		laySize := 0.0
-		tradedVolume := 0.0
-
-		if len(runner.ExchangePrices.AvailableToBack) > 0 {
-			backPrice = runner.ExchangePrices.AvailableToBack[0].Price
-			backSize = runner.ExchangePrices.AvailableToBack[0].Size
-		}
-
-		if len(runner.ExchangePrices.AvailableToLay) > 0 {
-			layPrice = runner.ExchangePrices.AvailableToLay[0].Price
-			laySize = runner.ExchangePrices.AvailableToLay[0].Size
-		}
-
-		if len(runner.ExchangePrices.TradedVolume) > 0 {
-			tradedVolume = runner.ExchangePrices.TradedVolume[0].Size
-		}
+		backPrice, backSize, layPrice, laySize, tradedVolume := extractPricesFromRunner(&runner)
 
 		snapshot := &models.OddsSnapshot{
-			RaceID:        raceID,
-			RunnerID:      runnerID,
-			MarketID:      marketID,
-			SelectionID:   runner.SelectionID,
-			BackPrice:     backPrice,
-			BackSize:      backSize,
-			LayPrice:      layPrice,
-			LaySize:       laySize,
-			TradedVolume:  tradedVolume,
+			RaceID:          raceID,
+			RunnerID:        runnerID,
+			MarketID:        marketID,
+			SelectionID:     runner.SelectionID,
+			BackPrice:       backPrice,
+			BackSize:        backSize,
+			LayPrice:        layPrice,
+			LaySize:         laySize,
+			TradedVolume:    tradedVolume,
 			LastPriceTraded: runner.LastPriceTraded,
-			Timestamp:     time.Now(),
+			Timestamp:       time.Now(),
 		}
 
 		snapshots = append(snapshots, snapshot)
@@ -226,14 +237,14 @@ func (m *MarketDataService) BackfillMarketData(
 	startDate time.Time,
 	endDate time.Time,
 ) error {
-	m.logger.Printf("Starting backfill of market data from %s to %s", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	m.logger.Printf("Starting backfill of market data from %s to %s", startDate.Format(dateLayout), endDate.Format(dateLayout))
 
 	currentDate := startDate
 	for currentDate.Before(endDate) {
-		m.logger.Printf("Processing date: %s", currentDate.Format("2006-01-02"))
+		m.logger.Printf("Processing date: %s", currentDate.Format(dateLayout))
 
 		if err := m.FetchAndStoreMarketData(ctx, currentDate, currentDate.Add(24*time.Hour)); err != nil {
-			m.logger.Printf("Error processing date %s: %v", currentDate.Format("2006-01-02"), err)
+			m.logger.Printf("Error processing date %s: %v", currentDate.Format(dateLayout), err)
 		}
 
 		currentDate = currentDate.Add(24 * time.Hour)

@@ -11,6 +11,8 @@ import (
 	"github.com/yourusername/clever-better/internal/models"
 )
 
+const errScanBet = "failed to scan bet: %w"
+
 // PostgresBetRepository implements BetRepository for PostgreSQL
 type PostgresBetRepository struct {
 	db *database.DB
@@ -91,7 +93,7 @@ func (b *PostgresBetRepository) GetByRaceID(ctx context.Context, raceID uuid.UUI
 			&bet.MatchedAt, &bet.SettledAt, &bet.CancelledAt, &bet.ProfitLoss, &bet.Commission, &bet.CreatedAt, &bet.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan bet: %w", err)
+			return nil, fmt.Errorf(errScanBet, err)
 		}
 		bets = append(bets, bet)
 	}
@@ -125,7 +127,7 @@ func (b *PostgresBetRepository) GetByStrategyID(ctx context.Context, strategyID 
 			&bet.MatchedAt, &bet.SettledAt, &bet.CancelledAt, &bet.ProfitLoss, &bet.Commission, &bet.CreatedAt, &bet.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan bet: %w", err)
+			return nil, fmt.Errorf(errScanBet, err)
 		}
 		bets = append(bets, bet)
 	}
@@ -184,7 +186,7 @@ func (b *PostgresBetRepository) GetPendingBets(ctx context.Context) ([]*models.B
 			&bet.MatchedAt, &bet.SettledAt, &bet.CancelledAt, &bet.ProfitLoss, &bet.Commission, &bet.CreatedAt, &bet.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan bet: %w", err)
+			return nil, fmt.Errorf(errScanBet, err)
 		}
 		bets = append(bets, bet)
 	}
@@ -218,7 +220,7 @@ func (b *PostgresBetRepository) GetSettledBets(ctx context.Context, start, end t
 			&bet.MatchedAt, &bet.SettledAt, &bet.CancelledAt, &bet.ProfitLoss, &bet.Commission, &bet.CreatedAt, &bet.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan bet: %w", err)
+			return nil, fmt.Errorf(errScanBet, err)
 		}
 		bets = append(bets, bet)
 	}

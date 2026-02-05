@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const dataSourceDisabledMsg = "data source disabled"
+
 // BetfairHistoricalClient implements DataSource for Betfair historical data
 type BetfairHistoricalClient struct {
 	httpClient *RateLimitedHTTPClient
@@ -85,7 +87,7 @@ func NewBetfairHistoricalClient(httpClient *RateLimitedHTTPClient, apiKey string
 // FetchRaces retrieves races within the specified date range
 func (c *BetfairHistoricalClient) FetchRaces(ctx context.Context, startDate, endDate time.Time) ([]RaceData, error) {
 	if !c.enabled {
-		return nil, NewDataSourceError("betfair_historical", ErrCodeNetworkError, "data source disabled", nil)
+		return nil, NewDataSourceError("betfair_historical", ErrCodeNetworkError, dataSourceDisabledMsg, nil)
 	}
 
 	// Get available files in the date range
@@ -134,7 +136,7 @@ func (c *BetfairHistoricalClient) FetchRaces(ctx context.Context, startDate, end
 // FetchRaceDetails retrieves detailed information for a specific race
 func (c *BetfairHistoricalClient) FetchRaceDetails(ctx context.Context, raceID string) (*RaceData, error) {
 	if !c.enabled {
-		return nil, NewDataSourceError("betfair_historical", ErrCodeNetworkError, "data source disabled", nil)
+		return nil, NewDataSourceError("betfair_historical", ErrCodeNetworkError, dataSourceDisabledMsg, nil)
 	}
 
 	// Race details would be fetched from the available files
@@ -220,7 +222,7 @@ func (p *BetfairCSVParser) ParseCSVReader(reader io.Reader) ([]RaceData, error) 
 // DownloadHistoricalFile downloads a historical data file from Betfair
 func (c *BetfairHistoricalClient) DownloadHistoricalFile(ctx context.Context, filename string) (io.ReadCloser, error) {
 	if !c.enabled {
-		return nil, NewDataSourceError("betfair_historical", ErrCodeNetworkError, "data source disabled", nil)
+		return nil, NewDataSourceError("betfair_historical", ErrCodeNetworkError, dataSourceDisabledMsg, nil)
 	}
 
 	url := fmt.Sprintf("%s/files/%s", c.baseURL, filename)
@@ -241,7 +243,7 @@ func (c *BetfairHistoricalClient) DownloadHistoricalFile(ctx context.Context, fi
 // GetAvailableFiles lists available historical data files
 func (c *BetfairHistoricalClient) GetAvailableFiles(ctx context.Context, startDate, endDate time.Time) ([]string, error) {
 	if !c.enabled {
-		return nil, NewDataSourceError("betfair_historical", ErrCodeNetworkError, "data source disabled", nil)
+		return nil, NewDataSourceError("betfair_historical", ErrCodeNetworkError, dataSourceDisabledMsg, nil)
 	}
 
 	url := fmt.Sprintf("%s/files?from=%s&to=%s", c.baseURL, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))

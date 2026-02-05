@@ -110,7 +110,7 @@ async def test_grpc_evaluate_strategy_loads_results():
         response = await servicer.EvaluateStrategy(request, context)
         
         assert response.strategy_id == "test-strategy-id"
-        assert response.composite_score == 0.8
+        assert response.composite_score == pytest.approx(0.8)
         assert response.recommendation in ["APPROVED", "NEEDS_REVIEW"]
 
 
@@ -131,5 +131,5 @@ async def test_grpc_get_prediction_uses_features():
     
     assert response.race_id == "race-123"
     assert 0.0 <= response.predicted_probability <= 1.0
-    assert response.predicted_probability != 0.5
-    assert response.confidence == 0.3
+    assert response.predicted_probability != pytest.approx(0.5)
+    assert response.confidence == pytest.approx(0.3)

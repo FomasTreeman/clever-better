@@ -1,0 +1,65 @@
+[
+  {
+    "id": "1c8b9f3e-4d5e-4f6a-8b9c-1d2e3f4a5b6c",
+    "event_id": "32145678",
+    "market_id": "1.198765432",
+    "venue": "Ascot",
+    "race_name": "Queen Anne Stakes",
+    "race_type": "Flat",
+    "distance": 1600,
+    "going": "Good to Firm",
+    "race_class": "1",
+    "start_time": "2026-02-15T14:30:00Z",
+    "country_code": "GB",
+    "runners": [
+      {
+        "id": "2d9c0e4f-5e6f-4a7b-9c0d-2e3f4a5b6c7d",
+        "selection_id": 12345678,
+        "name": "Lightning Strike",
+        "jockey": "Ryan Moore",
+        "trainer": "Aidan O'Brien",
+        "age": 4,
+        "weight": 126,
+        "stall": 3,
+        "form": "1211"
+      },
+      {
+        "id": "3e0d1f5a-6f7a-5b8c-0d1e-3f4a5b6c7d8e",
+        "selection_id": 87654321,
+        "name": "Thunder Bolt",
+        "jockey": "Frankie Dettori",
+        "trainer": "John Gosden",
+        "age": 5,
+        "weight": 126,
+        "stall": 5,
+        "form": "2112"
+      }
+    ]
+  },
+  {
+    "id": "4f1e2a6b-7a8b-6c9d-1e2f-4a5b6c7d8e9f",
+    "event_id": "32145679",
+    "market_id": "1.198765433",
+    "venue": "Newmarket",
+    "race_name": "Guineas Stakes",
+    "race_type": "Flat",
+    "distance": 1600,
+    "going": "Good",
+    "race_class": "1",
+    "start_time": "2026-02-15T15:30:00Z",
+    "country_code": "GB",
+    "runners": [
+      {
+        "id": "5a2f3b7c-8b9c-7d0e-2f3a-5b6c7d8e9f0a",
+        "selection_id": 11223344,
+        "name": "Royal Ascot",
+        "jockey": "William Buick",
+        "trainer": "Charlie Appleby",
+        "age": 3,
+        "weight": 126,
+        "stall": 2,
+        "form": "111"
+      }
+    ]
+  }
+]

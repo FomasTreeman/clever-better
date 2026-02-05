@@ -19,6 +19,8 @@ from app.monitoring import ml_logger
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 import mlflow
 
+API_PREFIX = "/api/v1"
+
 settings = get_settings()
 configure_logging(settings.log_level)
 logger = get_logger(__name__)
@@ -38,10 +40,10 @@ app.add_middleware(
 )
 
 app.include_router(router)
-app.include_router(training_router, prefix="/api/v1")
-app.include_router(prediction_router, prefix="/api/v1")
-app.include_router(visualization_router, prefix="/api/v1")
-app.include_router(dashboard_router, prefix="/api/v1")
+app.include_router(training_router, prefix=API_PREFIX)
+app.include_router(prediction_router, prefix=API_PREFIX)
+app.include_router(visualization_router, prefix=API_PREFIX)
+app.include_router(dashboard_router, prefix=API_PREFIX)
 
 
 @app.get("/health")

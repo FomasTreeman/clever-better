@@ -6,63 +6,85 @@ import (
 	"testing"
 )
 
-// TestLoadConfig_Success tests loading a valid configuration file
-func TestLoadConfig_Success(t *testing.T) {
-	cfg, err := Load("testdata/valid_config.yaml")
+const (
+	validConfigPath               = "testdata/valid_config.yaml"
+	expansionConfigPath           = "testdata/expansion_config.yaml"
+	expansionConfigMissingPath    = "testdata/expansion_config_missing.yaml"
+	nonexistentConfigPath         = "testdata/nonexistent_config.yaml"
+	expectedNoErrorLoadingConfig  = "expected no error loading config, got %v"
+	expectedNoErrorMsg            = "expected no error, got %v"
+	expectedNonNilConfig          = "expected non-nil config"
+	cleverBetterName              = "clever-better"
+	developmentEnv                = "development"
+	invalidEnv                    = "invalid"
+	localhostHost                 = "localhost"
+	postgresPort                  = 5432
+	postgresPrefix                = "postgres://"
+	testAppName                   = "test-app"
+	testDBPassword                = "TEST_DB_PASSWORD"
+	testMissingVar                = "TEST_MISSING_VAR"
+	expandedSecretValue           = "expanded_secret_value"
+	marketsValidationError        = "markets"
+	marketsValidationErrorCaps    = "Markets"
+)
+
+// TestLoadConfigSuccess tests loading a valid configuration file
+func TestLoadConfigSuccess(t *testing.T) {
+	cfg, err := Load(validConfigPath)
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf(expectedNoErrorMsg, err)
 	}
 
 	if cfg == nil {
-		t.Fatal("expected non-nil config")
+		t.Fatal(expectedNonNilConfig)
 	}
 
-	if cfg.App.Name != "clever-better" {
-		t.Errorf("expected app name 'clever-better', got '%s'", cfg.App.Name)
+	if cfg.App.Name != cleverBetterName {
+		t.Errorf("expected app name '%s', got '%s'", cleverBetterName, cfg.App.Name)
 	}
 
-	if cfg.App.Environment != "development" {
-		t.Errorf("expected environment 'development', got '%s'", cfg.App.Environment)
+	if cfg.App.Environment != developmentEnv {
+		t.Errorf("expected environment '%s', got '%s'", developmentEnv, cfg.App.Environment)
 	}
 
-	if cfg.Database.Host != "localhost" {
-		t.Errorf("expected database host 'localhost', got '%s'", cfg.Database.Host)
+	if cfg.Database.Host != localhostHost {
+		t.Errorf("expected database host '%s', got '%s'", localhostHost, cfg.Database.Host)
 	}
 
-	if cfg.Database.Port != 5432 {
-		t.Errorf("expected database port 5432, got %d", cfg.Database.Port)
+	if cfg.Database.Port != postgresPort {
+		t.Errorf("expected database port %d, got %d", postgresPort, cfg.Database.Port)
 	}
 }
 
-// TestLoadConfig_FileNotFound tests handling of missing configuration file
-func TestLoadConfig_FileNotFound(t *testing.T) {
-	_, err := Load("testdata/nonexistent_config.yaml")
+// TestLoadConfigFileNotFound tests handling of missing configuration file
+func TestLoadConfigFileNotFound(t *testing.T) {
+	_, err := Load(nonexistentConfigPath)
 	if err == nil {
 		t.Fatal("expected error for missing config file")
 	}
 }
 
-// TestLoadConfig_EnvironmentVariables tests environment variable override
-func TestLoadConfig_EnvironmentVariables(t *testing.T) {
+// TestLoadConfigEnvironmentVariables tests environment variable override
+func TestLoadConfigEnvironmentVariables(t *testing.T) {
 	// Set an environment variable
-	os.Setenv("CLEVER_BETTER_APP_NAME", "test-app")
+	os.Setenv("CLEVER_BETTER_APP_NAME", testAppName)
 	defer os.Unsetenv("CLEVER_BETTER_APP_NAME")
 
-	cfg, err := Load("testdata/valid_config.yaml")
+	cfg, err := Load(validConfigPath)
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf(expectedNoErrorMsg, err)
 	}
 
-	if cfg.App.Name != "test-app" {
-		t.Errorf("expected app name 'test-app' from environment, got '%s'", cfg.App.Name)
+	if cfg.App.Name != testAppName {
+		t.Errorf("expected app name '%s' from environment, got '%s'", testAppName, cfg.App.Name)
 	}
 }
 
-// TestValidate_Success tests validation of a valid configuration
-func TestValidate_Success(t *testing.T) {
-	cfg, err := Load("testdata/valid_config.yaml")
+// TestValidateSuccess tests validation of a valid configuration
+func TestValidateSuccess(t *testing.T) {
+	cfg, err := Load(validConfigPath)
 	if err != nil {
-		t.Fatalf("expected no error loading config, got %v", err)
+		t.Fatalf(expectedNoErrorLoadingConfig, err)
 	}
 
 	err = Validate(cfg)
@@ -71,25 +93,25 @@ func TestValidate_Success(t *testing.T) {
 	}
 }
 
-// TestValidate_InvalidEnvironment tests validation of invalid environment
-func TestValidate_InvalidEnvironment(t *testing.T) {
-	cfg, err := Load("testdata/valid_config.yaml")
+// TestValidateInvalidEnvironment tests validation of invalid environment
+func TestValidateInvalidEnvironment(t *testing.T) {
+	cfg, err := Load(validConfigPath)
 	if err != nil {
-		t.Fatalf("expected no error loading config, got %v", err)
+		t.Fatalf(expectedNoErrorLoadingConfig, err)
 	}
 
-	cfg.App.Environment = "invalid"
+	cfg.App.Environment = invalidEnv
 	err = Validate(cfg)
 	if err == nil {
 		t.Fatal("expected validation error for invalid environment")
 	}
 }
 
-// TestValidate_InvalidMarkets tests validation of invalid market names
-func TestValidate_InvalidMarkets(t *testing.T) {
-	cfg, err := Load("testdata/valid_config.yaml")
+// TestValidateInvalidMarkets tests validation of invalid market names
+func TestValidateInvalidMarkets(t *testing.T) {
+	cfg, err := Load(validConfigPath)
 	if err != nil {
-		t.Fatalf("expected no error loading config, got %v", err)
+		t.Fatalf(expectedNoErrorLoadingConfig, err)
 	}
 
 	// Set invalid markets
@@ -99,16 +121,16 @@ func TestValidate_InvalidMarkets(t *testing.T) {
 		t.Fatal("expected validation error for invalid markets")
 	}
 
-	if !containsSubstring(err.Error(), "markets") && !containsSubstring(err.Error(), "Markets") {
+	if !containsSubstring(err.Error(), marketsValidationError) && !containsSubstring(err.Error(), marketsValidationErrorCaps) {
 		t.Errorf("expected markets validation error, got: %v", err)
 	}
 }
 
-// TestValidate_EmptyMarkets tests validation of empty markets array
-func TestValidate_EmptyMarkets(t *testing.T) {
-	cfg, err := Load("testdata/valid_config.yaml")
+// TestValidateEmptyMarkets tests validation of empty markets array
+func TestValidateEmptyMarkets(t *testing.T) {
+	cfg, err := Load(validConfigPath)
 	if err != nil {
-		t.Fatalf("expected no error loading config, got %v", err)
+		t.Fatalf(expectedNoErrorLoadingConfig, err)
 	}
 
 	// Set empty markets
@@ -119,11 +141,11 @@ func TestValidate_EmptyMarkets(t *testing.T) {
 	}
 }
 
-// TestValidate_ValidMarkets tests validation of valid market combinations
-func TestValidate_ValidMarkets(t *testing.T) {
-	cfg, err := Load("testdata/valid_config.yaml")
+// TestValidateValidMarkets tests validation of valid market combinations
+func TestValidateValidMarkets(t *testing.T) {
+	cfg, err := Load(validConfigPath)
 	if err != nil {
-		t.Fatalf("expected no error loading config, got %v", err)
+		t.Fatalf(expectedNoErrorLoadingConfig, err)
 	}
 
 	// Test with single valid market
@@ -143,9 +165,13 @@ func TestValidate_ValidMarkets(t *testing.T) {
 
 // TestGetDatabaseDSN tests DSN generation
 func TestGetDatabaseDSN(t *testing.T) {
-	cfg, err := Load("testdata/valid_config.yaml")
+	cfg, err := Load(validConfigPath)
 	if err != nil {
 		t.Fatalf("expected no error loading config, got %v", err)
+	}
+
+	if err != nil {
+		t.Fatalf(expectedNoErrorLoadingConfig, err)
 	}
 
 	dsn := cfg.GetDatabaseDSN()
@@ -153,15 +179,15 @@ func TestGetDatabaseDSN(t *testing.T) {
 		t.Fatal("expected non-empty DSN")
 	}
 
-	if !containsSubstring(dsn, "postgres://") {
-		t.Errorf("expected DSN to start with 'postgres://', got '%s'", dsn)
+	if !containsSubstring(dsn, postgresPrefix) {
+		t.Errorf("expected DSN to start with '%s', got '%s'", postgresPrefix, dsn)
 	}
 }
 
 // TestIsDevelopment tests environment check function
 func TestIsDevelopment(t *testing.T) {
 	cfg := &Config{
-		App: AppConfig{Environment: "development"},
+		App: AppConfig{Environment: developmentEnv},
 	}
 
 	if !cfg.IsDevelopment() {
@@ -231,31 +257,30 @@ func TestGetMLServiceGRPCAddress(t *testing.T) {
 	}
 }
 
-// TestLoadConfig_EnvironmentVariableExpansion tests environment variable expansion in config file
-func TestLoadConfig_EnvironmentVariableExpansion(t *testing.T) {
+// TestLoadConfigEnvironmentVariableExpansion tests environment variable expansion in config file
+func TestLoadConfigEnvironmentVariableExpansion(t *testing.T) {
 	// Set environment variable
-	testValue := "expanded_secret_value"
-	os.Setenv("TEST_DB_PASSWORD", testValue)
-	defer os.Unsetenv("TEST_DB_PASSWORD")
+	os.Setenv(testDBPassword, expandedSecretValue)
+	defer os.Unsetenv(testDBPassword)
 
-	cfg, err := Load("testdata/expansion_config.yaml")
+	cfg, err := Load(expansionConfigPath)
 	if err != nil {
 		t.Fatalf("expected no error loading config with expansion, got %v", err)
 	}
 
-	if cfg.Database.Password != testValue {
-		t.Errorf("expected password '%s' from environment expansion, got '%s'", testValue, cfg.Database.Password)
+	if cfg.Database.Password != expandedSecretValue {
+		t.Errorf("expected password '%s' from environment expansion, got '%s'", expandedSecretValue, cfg.Database.Password)
 	}
 }
 
-// TestLoadConfig_MissingEnvironmentVariable tests handling of missing environment variables
-func TestLoadConfig_MissingEnvironmentVariable(t *testing.T) {
+// TestLoadConfigMissingEnvironmentVariable tests handling of missing environment variables
+func TestLoadConfigMissingEnvironmentVariable(t *testing.T) {
 	// Ensure environment variable is not set
-	os.Unsetenv("TEST_MISSING_VAR")
+	os.Unsetenv(testMissingVar)
 
-	cfg, err := Load("testdata/expansion_config_missing.yaml")
+	cfg, err := Load(expansionConfigMissingPath)
 	if err != nil {
-		t.Fatalf("expected no error loading config, got %v", err)
+		t.Fatalf(expectedNoErrorLoadingConfig, err)
 	}
 
 	// Missing variables should be kept as literal ${VAR} or empty depending on os.ExpandEnv behavior

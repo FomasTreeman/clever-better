@@ -47,7 +47,7 @@ class RaceOutcomeClassifier:
         def calibrated_loss(y_true, y_pred):
             bce = keras.losses.binary_crossentropy(y_true, y_pred)
             # Calibration penalty: encourage predictions to match empirical frequencies
-            calibration_penalty = tf.reduce_mean(tf.square(y_pred - y_true))
+            calibration_penalty = tf.reduce_mean(tf.square(y_pred - y_true), axis=0)
             return bce + 0.1 * calibration_penalty
         
         model.compile(
@@ -76,7 +76,7 @@ class RaceOutcomeClassifier:
         """Train the classifier with early stopping."""
         # Create validation split maintaining temporal order
         split_idx = int(len(X) * (1 - validation_split))
-        X_train, X_val = X[:split_idx], X[split_idx:]
+        x_train, x_val = X[:split_idx], X[split_idx:]
         y_train, y_val = y[:split_idx], y[split_idx:]
         
         # Define callbacks
@@ -97,8 +97,8 @@ class RaceOutcomeClassifier:
         
         # Train model
         self.history = self.model.fit(
-            X_train, y_train,
-            validation_data=(X_val, y_val),
+            x_train, y_train,
+            validation_data=(x_val, y_val),
             epochs=epochs,
             batch_size=batch_size,
             callbacks=[early_stop, reduce_lr],
@@ -106,7 +106,7 @@ class RaceOutcomeClassifier:
         )
         
         # Train calibrator on validation set
-        val_predictions = self.model.predict(X_val, verbose=0).flatten()
+        val_predictions = self.model.predict(x_val, verbose=0).flatten()
         self.calibrator.fit(val_predictions, y_val)
         
         return self.history.history

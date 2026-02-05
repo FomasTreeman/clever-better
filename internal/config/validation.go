@@ -9,6 +9,8 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+const dateLayout = "2006-01-02"
+
 // CustomValidator wraps the validator with custom validation rules
 type CustomValidator struct {
 	validator *validator.Validate
@@ -100,19 +102,19 @@ func validateMarkets(fl validator.FieldLevel) bool {
 // validateDateTime validates datetime strings
 func validateDateTime(fl validator.FieldLevel) bool {
 	dateStr := fl.Field().String()
-	_, err := time.Parse("2006-01-02", dateStr)
+	_, err := time.Parse(dateLayout, dateStr)
 	return err == nil
 }
 
 // validateCrossField performs cross-field validations
 func validateCrossField(cfg *Config) error {
 	// Validate backtest date range
-	startDate, err := time.Parse("2006-01-02", cfg.Backtest.StartDate)
+	startDate, err := time.Parse(dateLayout, cfg.Backtest.StartDate)
 	if err != nil {
 		return fmt.Errorf("invalid backtest start_date format: %w", err)
 	}
 
-	endDate, err := time.Parse("2006-01-02", cfg.Backtest.EndDate)
+	endDate, err := time.Parse(dateLayout, cfg.Backtest.EndDate)
 	if err != nil {
 		return fmt.Errorf("invalid backtest end_date format: %w", err)
 	}

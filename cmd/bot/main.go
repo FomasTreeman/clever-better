@@ -34,29 +34,11 @@ var (
 	BuildDate = "unknown"
 )
 
-func main() {
-	// Handle version flag
-	versionFlag := flag.Bool("version", false, "Print version information")
-	flag.Parse()
-
-	if *versionFlag {
-		fmt.Printf("Clever Better Trading Bot\n")
-		fmt.Printf("  Version:    %s\n", Version)
-		fmt.Printf("  Git Commit: %s\n", GitCommit)
-		fmt.Printf("  Build Date: %s\n", BuildDate)
-		os.Exit(0)
-	}
-	var (
-		cfg    *config.Config
-		err    error
-		appLog *logrus.Logger
-		db     *database.DB
-	)
-
-	// Load configuration
-	cfg, err = config.Load("config/config.yaml")
+// initConfig loads and validates the configuration
+func initConfig() (*config.Config, error) {
+	cfg, err := config.Load("config/config.yaml")
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
 	// Load AWS secrets if enabled
@@ -64,37 +46,30 @@ func main() {
 		region := os.Getenv("AWS_REGION")
 		secretName := os.Getenv("AWS_SECRET_NAME")
 		if region == "" || secretName == "" {
-			log.Fatalf("AWS_REGION and AWS_SECRET_NAME environment variables must be set when AWS_SECRETS_ENABLED is true")
+			return nil, fmt.Errorf("AWS_REGION and AWS_SECRET_NAME environment variables must be set when AWS_SECRETS_ENABLED is true")
 		}
 		if err := config.LoadSecretsFromAWS(cfg, region, secretName); err != nil {
-			log.Fatalf("Failed to load secrets: %v", err)
+			return nil, fmt.Errorf("failed to load secrets: %w", err)
 		}
 	}
 
 	// Validate configuration
 	if err := config.Validate(cfg); err != nil {
-		log.Fatalf("Invalid configuration: %v", err)
+		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
 	if !cfg.Features.LiveTradingEnabled && !cfg.Features.PaperTradingEnabled {
-		log.Fatalf("At least one trading mode must be enabled")
+		return nil, fmt.Errorf("at least one trading mode must be enabled")
 	}
 
-	// Set up logging
-	appLog = logger.NewLogger(cfg.App.LogLevel)
-	appLog.WithFields(logrus.Fields{
-		"environment": cfg.App.Environment,
-		"log_level":   cfg.App.LogLevel,
-		"version":     Version,
-		"commit":      GitCommit,
-		"build_date":  BuildDate,
-	}).Info("Clever Better Trading Bot starting")
+	return cfg, nil
+}
 
-	// Initialize Prometheus metrics registry
+// initMetricsServer starts the Prometheus metrics server
+func initMetricsServer(appLog *logrus.Logger) {
 	metrics.InitRegistry()
 	appLog.Info("Prometheus metrics registry initialized")
 
-	// Start Prometheus HTTP server on port 9090
 	go func() {
 		http.Handle("/metrics", promhttp.HandlerFor(
 			metrics.GetRegistry(),
@@ -111,24 +86,125 @@ func main() {
 		}
 	}()
 	appLog.Info("Prometheus metrics server started on :9090")
+}
 
-	// Initialize AWS X-Ray tracing
+// initTracing initializes AWS X-Ray tracing if enabled
+func initTracing(appLog *logrus.Logger) {
 	xrayEnabled := os.Getenv("XRAY_ENABLED") == "true"
-	if xrayEnabled {
-		daemonAddr := os.Getenv("XRAY_DAEMON_ADDR")
-		if daemonAddr == "" {
-			daemonAddr = "localhost:2000"
-		}
-		tracing.Initialize(tracing.Config{
-			ServiceName: "clever-better-bot",
-			Enabled:     true,
-			SamplingRate: 0.1,
-			DaemonAddr:  daemonAddr,
-		}, appLog)
-		appLog.WithField("daemon_addr", daemonAddr).Info("AWS X-Ray tracing initialized")
+	if !xrayEnabled {
+		return
 	}
+
+	daemonAddr := os.Getenv("XRAY_DAEMON_ADDR")
+	if daemonAddr == "" {
+		daemonAddr = "localhost:2000"
+	}
+	tracing.Initialize(tracing.Config{
+		ServiceName: "clever-better-bot",
+		Enabled:     true,
+		SamplingRate: 0.1,
+		DaemonAddr:  daemonAddr,
+	}, appLog)
+	appLog.WithField("daemon_addr", daemonAddr).Info("AWS X-Ray tracing initialized")
+}
+
+// initBetfairServices initializes Betfair betting service if live trading is enabled
+func initBetfairServices(cfg *config.Config, betRepo repository.BetRepository, orderLogger *log.Logger, appLog *logrus.Logger) (*betfair.BettingService, *betfair.OrderManager, error) {
+	if !cfg.Features.LiveTradingEnabled {
+		appLog.Info("Live trading disabled; skipping Betfair initialization")
+		return nil, nil, nil
+	}
+
+	httpLogger := log.New(os.Stdout, "betfair-http: ", log.LstdFlags)
+	httpClient := datasource.NewRateLimitedHTTPClient(datasource.DefaultHTTPClientConfig(), httpLogger)
+
+	// Initialize Betfair client
+	betfairClient := betfair.NewBetfairClient(&cfg.Betfair, httpClient, orderLogger)
+
+	// Login to Betfair
+	if err := betfairClient.Login(context.Background()); err != nil {
+		return nil, nil, fmt.Errorf("failed to login to Betfair: %w", err)
+	}
+
+	appLog.Info("Betfair client initialized and logged in")
+
+	// Initialize betting service
+	bettingService := betfair.NewBettingService(
+		betfairClient,
+		betRepo,
+		betfair.BettingConfig{
+			MaxStake:       cfg.Trading.MaxStakePerBet,
+			MinStake:       0.10,
+			MaxBetsPerDay:  cfg.Trading.MaxConcurrentBets,
+			CommissionRate: cfg.Backtest.CommissionRate,
+		},
+		orderLogger,
+	)
+
+	// Initialize order manager
+	orderManager := betfair.NewOrderManager(
+		bettingService,
+		betRepo,
+		time.Duration(cfg.Bot.OrderMonitoringInterval)*time.Second,
+		orderLogger,
+	)
+
+	return bettingService, orderManager, nil
+}
+
+// logStartupInfo logs startup information
+func logStartupInfo(appLog *logrus.Logger, cfg *config.Config, orchestrator *bot.Orchestrator) {
+	appLog.WithFields(logrus.Fields{
+		"paper_trading":      cfg.Features.PaperTradingEnabled,
+		"live_trading":       cfg.Features.LiveTradingEnabled,
+		"ml_predictions":     cfg.Features.MLPredictionsEnabled,
+		"emergency_shutdown": cfg.Trading.EmergencyShutdownEnabled,
+	}).Info("Bot orchestrator started successfully")
+
+	status := orchestrator.GetStatus()
+	appLog.WithFields(logrus.Fields{
+		"active_strategies":     status.ActiveStrategies,
+		"circuit_breaker_state": status.CircuitBreakerState,
+		"max_exposure":          status.RiskMetrics.MaxExposure,
+		"max_daily_loss":        status.RiskMetrics.MaxDailyLoss,
+	}).Info("Bot is running")
+}
+
+func main() {
+	// Handle version flag
+	versionFlag := flag.Bool("version", false, "Print version information")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("Clever Better Trading Bot\n")
+		fmt.Printf("  Version:    %s\n", Version)
+		fmt.Printf("  Git Commit: %s\n", GitCommit)
+		fmt.Printf("  Build Date: %s\n", BuildDate)
+		os.Exit(0)
+	}
+
+	// Load and validate configuration
+	cfg, err := initConfig()
+	if err != nil {
+		log.Fatalf("Configuration error: %v", err)
+	}
+
+	// Set up logging
+	appLog := logger.NewLogger(cfg.App.LogLevel)
+	appLog.WithFields(logrus.Fields{
+		"environment": cfg.App.Environment,
+		"log_level":   cfg.App.LogLevel,
+		"version":     Version,
+		"commit":      GitCommit,
+		"build_date":  BuildDate,
+	}).Info("Clever Better Trading Bot starting")
+
+	// Initialize metrics and tracing
+	initMetricsServer(appLog)
+	initTracing(appLog)
+
 	// Initialize database connection
-	db, err = database.NewDB(cfg.GetDatabaseDSN())
+	db, err := database.NewDB(cfg.GetDatabaseDSN())
 	if err != nil {
 		appLog.WithError(err).Fatal("Failed to connect to database")
 	}
@@ -165,10 +241,6 @@ func main() {
 	}
 	defer healthServer.Shutdown()
 
-	// Run migrations if needed
-	// Note: In production, migrations should be run separately
-	// db.RunMigrations()
-
 	// Initialize repositories
 	raceRepo := repository.NewPostgresRaceRepository(db)
 	runnerRepo := repository.NewPostgresRunnerRepository(db)
@@ -183,53 +255,11 @@ func main() {
 
 	appLog.WithField("ml_service_url", cfg.MLService.URL).Info("ML client initialized")
 
-	var (
-		bettingService *betfair.BettingService
-		orderManager   *betfair.OrderManager
-	)
-
-	if cfg.Features.LiveTradingEnabled {
-		orderLogger := log.New(os.Stdout, "order-manager: ", log.LstdFlags)
-		httpLogger := log.New(os.Stdout, "betfair-http: ", log.LstdFlags)
-		httpClient := datasource.NewRateLimitedHTTPClient(datasource.DefaultHTTPClientConfig(), httpLogger)
-
-		// Initialize Betfair client
-		betfairClient := betfair.NewBetfairClient(&cfg.Betfair, httpClient, orderLogger)
-
-		// Login to Betfair
-		if err := betfairClient.Login(context.Background()); err != nil {
-			appLog.WithError(err).Fatal("Failed to login to Betfair")
-		}
-		defer func() {
-			if err := betfairClient.Logout(context.Background()); err != nil {
-				appLog.WithError(err).Error("Failed to logout from Betfair")
-			}
-		}()
-
-		appLog.Info("Betfair client initialized and logged in")
-
-		// Initialize betting service
-		bettingService = betfair.NewBettingService(
-			betfairClient,
-			betRepo,
-			betfair.BettingConfig{
-				MaxStake:       cfg.Trading.MaxStakePerBet,
-				MinStake:       0.10,
-				MaxBetsPerDay:  cfg.Trading.MaxConcurrentBets,
-				CommissionRate: cfg.Backtest.CommissionRate,
-			},
-			orderLogger,
-		)
-
-		// Initialize order manager
-		orderManager = betfair.NewOrderManager(
-			bettingService,
-			betRepo,
-			time.Duration(cfg.Bot.OrderMonitoringInterval)*time.Second,
-			orderLogger,
-		)
-	} else {
-		appLog.Info("Live trading disabled; skipping Betfair initialization")
+	// Initialize Betfair services
+	orderLogger := log.New(os.Stdout, "order-manager: ", log.LstdFlags)
+	bettingService, orderManager, err := initBetfairServices(cfg, betRepo, orderLogger, appLog)
+	if err != nil {
+		appLog.WithError(err).Fatal("Failed to initialize Betfair services")
 	}
 
 	// Create bot orchestrator
@@ -269,21 +299,8 @@ func main() {
 		appLog.WithError(err).Fatal("Failed to start orchestrator")
 	}
 
-	appLog.WithFields(logrus.Fields{
-		"paper_trading":         cfg.Features.PaperTradingEnabled,
-		"live_trading":          cfg.Features.LiveTradingEnabled,
-		"ml_predictions":        cfg.Features.MLPredictionsEnabled,
-		"emergency_shutdown":    cfg.Trading.EmergencyShutdownEnabled,
-	}).Info("Bot orchestrator started successfully")
-
-	// Print status information
-	status := orchestrator.GetStatus()
-	appLog.WithFields(logrus.Fields{
-		"active_strategies":     status.ActiveStrategies,
-		"circuit_breaker_state": status.CircuitBreakerState,
-		"max_exposure":          status.RiskMetrics.MaxExposure,
-		"max_daily_loss":        status.RiskMetrics.MaxDailyLoss,
-	}).Info("Bot is running")
+	// Log startup info
+	logStartupInfo(appLog, cfg, orchestrator)
 
 	// Wait for shutdown signal
 	sig := <-sigChan

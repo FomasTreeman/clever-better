@@ -1,0 +1,202 @@
+[
+  {
+    "event_id": "1.198765432",
+    "market_id": "1.198765433",
+    "start_time": "2026-02-15T14:30:00Z",
+    "venue": "Ascot",
+    "race_name": "King George VI Stakes",
+    "distance": 1600,
+    "going": "Good",
+    "race_class": "1",
+    "prize_money": 250000,
+    "runners": [
+      {
+        "runner_id": "12345678",
+        "name": "Thunder Strike",
+        "jockey": "Ryan Moore",
+        "trainer": "Aidan O'Brien",
+        "age": 4,
+        "weight": 126,
+        "draw": 5,
+        "form": "1211",
+        "odds": {
+          "back": 3.5,
+          "lay": 3.6
+        },
+        "stats": {
+          "wins": 8,
+          "places": 12,
+          "total_runs": 15,
+          "earnings": 450000
+        }
+      },
+      {
+        "runner_id": "87654321",
+        "name": "Silver Bullet",
+        "jockey": "Frankie Dettori",
+        "trainer": "John Gosden",
+        "age": 3,
+        "weight": 124,
+        "draw": 2,
+        "form": "1112",
+        "odds": {
+          "back": 4.2,
+          "lay": 4.3
+        },
+        "stats": {
+          "wins": 6,
+          "places": 10,
+          "total_runs": 12,
+          "earnings": 320000
+        }
+      },
+      {
+        "runner_id": "11223344",
+        "name": "Golden Arrow",
+        "jockey": "William Buick",
+        "trainer": "Charlie Appleby",
+        "age": 5,
+        "weight": 128,
+        "draw": 8,
+        "form": "2131",
+        "odds": {
+          "back": 5.0,
+          "lay": 5.2
+        },
+        "stats": {
+          "wins": 10,
+          "places": 18,
+          "total_runs": 22,
+          "earnings": 580000
+        }
+      }
+    ]
+  },
+  {
+    "event_id": "1.198765444",
+    "market_id": "1.198765445",
+    "start_time": "2026-02-15T15:45:00Z",
+    "venue": "Newmarket",
+    "race_name": "2000 Guineas",
+    "distance": 1600,
+    "going": "Good to Firm",
+    "race_class": "1",
+    "prize_money": 500000,
+    "runners": [
+      {
+        "runner_id": "55667788",
+        "name": "Royal Command",
+        "jockey": "Ryan Moore",
+        "trainer": "Aidan O'Brien",
+        "age": 3,
+        "weight": 126,
+        "draw": 3,
+        "form": "111",
+        "odds": {
+          "back": 2.8,
+          "lay": 2.9
+        },
+        "stats": {
+          "wins": 3,
+          "places": 3,
+          "total_runs": 3,
+          "earnings": 180000
+        }
+      },
+      {
+        "runner_id": "99887766",
+        "name": "Night Rider",
+        "jockey": "James Doyle",
+        "trainer": "Charlie Appleby",
+        "age": 3,
+        "weight": 126,
+        "draw": 6,
+        "form": "121",
+        "odds": {
+          "back": 3.2,
+          "lay": 3.3
+        },
+        "stats": {
+          "wins": 2,
+          "places": 3,
+          "total_runs": 4,
+          "earnings": 120000
+        }
+      }
+    ]
+  },
+  {
+    "event_id": "1.198765456",
+    "market_id": "1.198765457",
+    "start_time": "2026-02-16T14:00:00Z",
+    "venue": "Cheltenham",
+    "race_name": "Champion Hurdle",
+    "distance": 3300,
+    "going": "Soft",
+    "race_class": "1",
+    "prize_money": 450000,
+    "race_type": "hurdle",
+    "runners": [
+      {
+        "runner_id": "22334455",
+        "name": "Constitution Hill",
+        "jockey": "Nico de Boinville",
+        "trainer": "Nicky Henderson",
+        "age": 6,
+        "weight": 164,
+        "draw": 4,
+        "form": "11111",
+        "odds": {
+          "back": 1.5,
+          "lay": 1.52
+        },
+        "stats": {
+          "wins": 8,
+          "places": 9,
+          "total_runs": 9,
+          "earnings": 850000
+        }
+      },
+      {
+        "runner_id": "66778899",
+        "name": "State Man",
+        "jockey": "Paul Townend",
+        "trainer": "Willie Mullins",
+        "age": 7,
+        "weight": 164,
+        "draw": 7,
+        "form": "1211",
+        "odds": {
+          "back": 5.5,
+          "lay": 5.7
+        },
+        "stats": {
+          "wins": 10,
+          "places": 15,
+          "total_runs": 18,
+          "earnings": 720000
+        }
+      },
+      {
+        "runner_id": "33445566",
+        "name": "Vauban",
+        "jockey": "Rich Ricci",
+        "trainer": "Willie Mullins",
+        "age": 6,
+        "weight": 164,
+        "draw": 2,
+        "form": "12111",
+        "odds": {
+          "back": 8.0,
+          "lay": 8.5
+        },
+        "stats": {
+          "wins": 7,
+          "places": 11,
+          "total_runs": 14,
+          "earnings": 520000
+        }
+      }
+    ]
+  }
+]

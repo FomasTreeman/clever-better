@@ -391,19 +391,77 @@ db-reset: ## Reset database (drop and recreate)
 # Testing Targets
 # =============================================================================
 
-.PHONY: test
-test: go-test py-test ## Run all tests
+.PHONY: test-unit
+test-unit: ## Run unit tests only
+	@echo "Running Go unit tests..."
+	go test -v -race -short ./internal/... ./pkg/...
+	@echo ""
+	@echo "Running Python unit tests..."
+	cd ml-service && pytest tests/test_features.py tests/test_model_io.py -v
 
 .PHONY: test-integration
 test-integration: ## Run integration tests
-	go test -v -tags=integration ./test/integration/...
+	@echo "Starting test environment..."
+	docker-compose -f docker-compose.test.yml up -d timescaledb-test redis-test ml-service-test
+	@echo "Waiting for services to be ready..."
+	sleep 10
+	@echo "Running integration tests..."
+	go test -v -tags=integration -timeout 10m ./test/integration/...
+	@echo "Stopping test environment..."
+	docker-compose -f docker-compose.test.yml down
 
 .PHONY: test-e2e
 test-e2e: ## Run end-to-end tests
-	go test -v -tags=e2e ./test/e2e/...
+	@echo "Starting full test environment..."
+	docker-compose -f docker-compose.test.yml up -d
+	@echo "Waiting for all services to be ready..."
+	sleep 15
+	@echo "Running E2E tests..."
+	go test -v -tags=e2e -timeout 15m ./test/e2e/...
+	@echo "Stopping test environment..."
+	docker-compose -f docker-compose.test.yml down -v
+
+.PHONY: test
+test: test-unit ## Run all unit tests (default)
 
 .PHONY: test-all
-test-all: test test-integration test-e2e ## Run all test suites
+test-all: test-unit test-integration test-e2e ## Run all test suites (unit, integration, E2E)
+
+.PHONY: test-coverage
+test-coverage: ## Generate combined test coverage report
+	@echo "Running tests with coverage..."
+	@mkdir -p coverage
+	go test -v -race -coverprofile=coverage/coverage-go.out -covermode=atomic ./...
+	go tool cover -html=coverage/coverage-go.out -o coverage/coverage-go.html
+	@echo "Go coverage report: coverage/coverage-go.html"
+	@echo ""
+	cd ml-service && pytest tests/ -v --cov=app --cov-report=html:../coverage/coverage-python --cov-report=xml:../coverage/coverage-python.xml
+	@echo "Python coverage report: coverage/coverage-python/index.html"
+
+.PHONY: test-python
+test-python: ## Run all Python ML service tests
+	cd ml-service && pytest tests/ -v --cov=app --cov-report=term
+
+.PHONY: test-quick
+test-quick: ## Run quick smoke tests
+	go test -v -short -timeout 2m ./internal/service/... ./internal/ml/...
+	cd ml-service && pytest tests/test_api.py -v -k "test_health"
+
+.PHONY: test-watch
+test-watch: ## Watch for changes and re-run tests
+	@echo "Watching for changes (requires: go install github.com/cespare/reflex@latest)..."
+	reflex -r '\.go$$' -s -- sh -c 'go test -v ./...'
+
+.PHONY: test-ci
+test-ci: ## Run tests in CI environment
+	@echo "Running CI test suite..."
+	go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -func=coverage.out
+	cd ml-service && pytest tests/ -v --cov=app --cov-report=xml --cov-report=term --junitxml=junit.xml
+
+.PHONY: test-benchmark
+test-benchmark: ## Run benchmark tests
+	go test -bench=. -benchmem -run=^$ ./...
 
 # =============================================================================
 # Linting and Formatting

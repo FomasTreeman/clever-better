@@ -1,0 +1,37 @@
+backtest:
+  initial_bankroll: 10000.0
+  commission_rate: 0.05
+  start_date: "2026-01-01"
+  end_date: "2026-01-31"
+  stake_type: "fixed"
+  fixed_stake: 100.0
+  max_concurrent_bets: 5
+
+trading:
+  max_stake_per_bet: 500.0
+  min_stake_per_bet: 10.0
+  max_exposure: 5000.0
+  max_daily_loss: 1000.0
+  strategy_evaluation_interval: 60
+
+strategies:
+  - id: "simple_value_1"
+    name: "Simple Value Strategy"
+    type: "simple_value"
+    enabled: true
+    min_confidence: 0.6
+    min_value_threshold: 0.1
+    max_odds: 10.0
+    min_odds: 2.0
+
+ml_service:
+  enabled: true
+  min_prediction_confidence: 0.65
+  feature_set: "comprehensive"
+  model_version: "latest"
+
+risk:
+  circuit_breaker_enabled: true
+  max_consecutive_losses: 5
+  max_drawdown_percent: 20.0
+  emergency_shutdown_enabled: true

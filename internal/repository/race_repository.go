@@ -11,6 +11,8 @@ import (
 	"github.com/yourusername/clever-better/internal/models"
 )
 
+const errScanRace = "failed to scan race: %w"
+
 // PostgresRaceRepository implements RaceRepository for PostgreSQL
 type PostgresRaceRepository struct {
 	db *database.DB
@@ -34,6 +36,24 @@ func (r *PostgresRaceRepository) Create(ctx context.Context, race *models.Race) 
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create race: %w", err)
+	}
+
+	return nil
+}
+
+// CreateWithTx inserts a new race using a provided transaction
+func (r *PostgresRaceRepository) CreateWithTx(ctx context.Context, tx pgx.Tx, race *models.Race) error {
+	query := `
+		INSERT INTO races (id, scheduled_start, track, race_type, distance, grade, conditions, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	_, err := tx.Exec(ctx, query,
+		race.ID, race.ScheduledStart, race.Track, race.RaceType, race.Distance,
+		race.Grade, race.Conditions, race.Status,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create race within transaction: %w", err)
 	}
 
 	return nil
@@ -87,7 +107,7 @@ func (r *PostgresRaceRepository) GetUpcoming(ctx context.Context, limit int) ([]
 			&race.Distance, &race.Grade, &race.Conditions, &race.Status, &race.CreatedAt, &race.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan race: %w", err)
+			return nil, fmt.Errorf(errScanRace, err)
 		}
 		races = append(races, race)
 	}
@@ -119,7 +139,7 @@ func (r *PostgresRaceRepository) GetByDateRange(ctx context.Context, start, end 
 			&race.Distance, &race.Grade, &race.Conditions, &race.Status, &race.CreatedAt, &race.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan race: %w", err)
+			return nil, fmt.Errorf(errScanRace, err)
 		}
 		races = append(races, race)
 	}
@@ -155,7 +175,7 @@ func (r *PostgresRaceRepository) GetByTrackAndDate(ctx context.Context, track st
 			&race.Distance, &race.Grade, &race.Conditions, &race.Status, &race.CreatedAt, &race.UpdatedAt,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan race: %w", err)
+			return nil, fmt.Errorf(errScanRace, err)
 		}
 		races = append(races, race)
 	}

@@ -1,0 +1,134 @@
+[
+  {
+    "prediction_id": "pred-20260215-001",
+    "race_id": "1.198765432",
+    "runner_id": "12345678",
+    "model_id": "model-v1.0.0-20260215",
+    "timestamp": "2026-02-15T14:00:00Z",
+    "confidence": 0.85,
+    "probability": 0.78,
+    "features": {
+      "odds": 3.5,
+      "distance": 1600,
+      "going": "Good",
+      "jockey_win_rate": 0.25,
+      "trainer_win_rate": 0.30,
+      "form_score": 0.82
+    },
+    "prediction": {
+      "win_probability": 0.78,
+      "place_probability": 0.92,
+      "value_rating": 0.68
+    }
+  },
+  {
+    "prediction_id": "pred-20260215-002",
+    "race_id": "1.198765432",
+    "runner_id": "87654321",
+    "model_id": "model-v1.0.0-20260215",
+    "timestamp": "2026-02-15T14:00:00Z",
+    "confidence": 0.79,
+    "probability": 0.65,
+    "features": {
+      "odds": 4.2,
+      "distance": 1600,
+      "going": "Good",
+      "jockey_win_rate": 0.28,
+      "trainer_win_rate": 0.32,
+      "form_score": 0.85
+    },
+    "prediction": {
+      "win_probability": 0.65,
+      "place_probability": 0.88,
+      "value_rating": 0.72
+    }
+  },
+  {
+    "prediction_id": "pred-20260215-003",
+    "race_id": "1.198765433",
+    "runner_id": "11223344",
+    "model_id": "model-v1.0.0-20260215",
+    "timestamp": "2026-02-15T14:00:00Z",
+    "confidence": 0.72,
+    "probability": 0.58,
+    "features": {
+      "odds": 5.0,
+      "distance": 1600,
+      "going": "Good",
+      "jockey_win_rate": 0.22,
+      "trainer_win_rate": 0.28,
+      "form_score": 0.75
+    },
+    "prediction": {
+      "win_probability": 0.58,
+      "place_probability": 0.82,
+      "value_rating": 0.65
+    }
+  },
+  {
+    "prediction_id": "pred-20260215-004",
+    "race_id": "1.198765445",
+    "runner_id": "55667788",
+    "model_id": "model-v1.0.0-20260215",
+    "timestamp": "2026-02-15T15:30:00Z",
+    "confidence": 0.92,
+    "probability": 0.88,
+    "features": {
+      "odds": 2.8,
+      "distance": 1600,
+      "going": "Good to Firm",
+      "jockey_win_rate": 0.35,
+      "trainer_win_rate": 0.38,
+      "form_score": 0.95
+    },
+    "prediction": {
+      "win_probability": 0.88,
+      "place_probability": 0.97,
+      "value_rating": 0.82
+    }
+  },
+  {
+    "prediction_id": "pred-20260216-001",
+    "race_id": "1.198765457",
+    "runner_id": "22334455",
+    "model_id": "model-v1.0.0-20260215",
+    "timestamp": "2026-02-16T13:45:00Z",
+    "confidence": 0.95,
+    "probability": 0.92,
+    "features": {
+      "odds": 1.5,
+      "distance": 3300,
+      "going": "Soft",
+      "jockey_win_rate": 0.32,
+      "trainer_win_rate": 0.35,
+      "form_score": 1.0
+    },
+    "prediction": {
+      "win_probability": 0.92,
+      "place_probability": 0.99,
+      "value_rating": 0.75
+    }
+  },
+  {
+    "prediction_id": "pred-20260216-002",
+    "race_id": "1.198765457",
+    "runner_id": "66778899",
+    "model_id": "model-v1.0.0-20260215",
+    "timestamp": "2026-02-16T13:45:00Z",
+    "confidence": 0.68,
+    "probability": 0.45,
+    "features": {
+      "odds": 5.5,
+      "distance": 3300,
+      "going": "Soft",
+      "jockey_win_rate": 0.28,
+      "trainer_win_rate": 0.30,
+      "form_score": 0.78
+    },
+    "prediction": {
+      "win_probability": 0.45,
+      "place_probability": 0.75,
+      "value_rating": 0.55
+    }
+  }
+]

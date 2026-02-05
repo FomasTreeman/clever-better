@@ -10,10 +10,15 @@ import (
 	"github.com/yourusername/clever-better/internal/repository"
 )
 
+const (
+	skipIntegrationShort               = "Skipping integration test in short mode"
+	couldNotConnectToTestDatabaseMsg   = "Could not connect to test database: %v"
+)
+
 // TestIngestionServiceHistoricalSync tests the complete historical ingestion flow
 func TestIngestionServiceHistoricalSync(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip(skipIntegrationShort)
 	}
 
 	// Setup database connection (requires test database)
@@ -26,7 +31,7 @@ func TestIngestionServiceHistoricalSync(t *testing.T) {
 		SSLMode:  "disable",
 	})
 	if err != nil {
-		t.Skipf("Could not connect to test database: %v", err)
+		t.Skipf(couldNotConnectToTestDatabaseMsg, err)
 	}
 	defer db.Close()
 
@@ -64,7 +69,7 @@ func TestIngestionServiceHistoricalSync(t *testing.T) {
 // TestIngestionServiceLivePolling tests live data ingestion
 func TestIngestionServiceLivePolling(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip(skipIntegrationShort)
 	}
 
 	// Setup
@@ -77,7 +82,7 @@ func TestIngestionServiceLivePolling(t *testing.T) {
 		SSLMode:  "disable",
 	})
 	if err != nil {
-		t.Skipf("Could not connect to test database: %v", err)
+		t.Skipf(couldNotConnectToTestDatabaseMsg, err)
 	}
 	defer db.Close()
 
@@ -99,7 +104,7 @@ func TestIngestionServiceLivePolling(t *testing.T) {
 // TestIngestionServiceMultipleSources tests ingestion from multiple sources
 func TestIngestionServiceMultipleSources(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip(skipIntegrationShort)
 	}
 
 	// Setup
@@ -112,7 +117,7 @@ func TestIngestionServiceMultipleSources(t *testing.T) {
 		SSLMode:  "disable",
 	})
 	if err != nil {
-		t.Skipf("Could not connect to test database: %v", err)
+		t.Skipf(couldNotConnectToTestDatabaseMsg, err)
 	}
 	defer db.Close()
 
@@ -146,7 +151,7 @@ func TestIngestionServiceMultipleSources(t *testing.T) {
 // TestIngestionServiceDataValidation tests data validation during ingestion
 func TestIngestionServiceDataValidation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip(skipIntegrationShort)
 	}
 
 	// Setup
@@ -159,7 +164,7 @@ func TestIngestionServiceDataValidation(t *testing.T) {
 		SSLMode:  "disable",
 	})
 	if err != nil {
-		t.Skipf("Could not connect to test database: %v", err)
+		t.Skipf(couldNotConnectToTestDatabaseMsg, err)
 	}
 	defer db.Close()
 
@@ -187,7 +192,7 @@ func TestIngestionServiceDataValidation(t *testing.T) {
 // TestDataSourceFactoryIntegration tests factory with configuration
 func TestDataSourceFactoryIntegration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip(skipIntegrationShort)
 	}
 
 	// This test verifies that factory can create sources with proper config
@@ -210,7 +215,7 @@ func TestDataSourceFactoryIntegration(t *testing.T) {
 // TestSchedulerIntegration tests scheduler with ingestion service
 func TestSchedulerIntegration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip(skipIntegrationShort)
 	}
 
 	// Setup
@@ -223,7 +228,7 @@ func TestSchedulerIntegration(t *testing.T) {
 		SSLMode:  "disable",
 	})
 	if err != nil {
-		t.Skipf("Could not connect to test database: %v", err)
+		t.Skipf(couldNotConnectToTestDatabaseMsg, err)
 	}
 	defer db.Close()
 
@@ -251,7 +256,7 @@ func BenchmarkIngestionServiceHistorical(b *testing.B) {
 		SSLMode:  "disable",
 	})
 	if err != nil {
-		b.Skipf("Could not connect to test database: %v", err)
+		b.Skipf(couldNotConnectToTestDatabaseMsg, err)
 	}
 	defer db.Close()
 

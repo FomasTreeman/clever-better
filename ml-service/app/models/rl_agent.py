@@ -182,7 +182,7 @@ class DQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
         
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=learning_rate)
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=learning_rate, weight_decay=1e-4)
         self.loss_fn = nn.SmoothL1Loss()
         
         # Experience replay buffer
@@ -290,9 +290,9 @@ def train_rl_agent(
         episode_loss = 0
         steps = 0
         
-        for step in range(max_steps):
+        for _ in range(max_steps):
             action = agent.select_action(state, training=True)
-            next_state, reward, done, info = env.step(action)
+            next_state, reward, done, _ = env.step(action)
             
             agent.store_transition(state, action, reward, next_state, done)
             loss = agent.train_step()

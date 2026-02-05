@@ -10,6 +10,8 @@ import (
 	"github.com/yourusername/clever-better/internal/models"
 )
 
+const skipIntegrationMsg = "Integration test - requires database setup"
+
 // TestRaceRepositoryCreate tests race creation
 func TestRaceRepositoryCreate(t *testing.T) {
 	// db := database.SetupTestDB(t)
@@ -46,7 +48,7 @@ func TestRaceRepositoryCreate(t *testing.T) {
 	// if retrieved.ID != race.ID {
 	// 	t.Errorf("expected race ID %v, got %v", race.ID, retrieved.ID)
 	// }
-	t.Skip("Integration test - requires database setup")
+	t.Skip(skipIntegrationMsg)
 }
 
 // TestBetRepositoryBatch tests batch bet operations
@@ -87,7 +89,7 @@ func TestBetRepositoryBatch(t *testing.T) {
 	// // err := repos.Bet.InsertBatch(ctx, bets)
 
 	// t.Logf("would insert %d bets", len(bets))
-	t.Skip("Integration test - requires database setup")
+	t.Skip(skipIntegrationMsg)
 }
 
 // TestOddsRepositoryTimeSeries tests time-series odds queries
@@ -137,7 +139,7 @@ func TestOddsRepositoryTimeSeries(t *testing.T) {
 	// if len(retrieved) != 50 {
 	// 	t.Errorf("expected 50 snapshots, got %d", len(retrieved))
 	// }
-	t.Skip("Integration test - requires database setup")
+	t.Skip(skipIntegrationMsg)
 }
 
 // TestStrategyPerformanceRepository tests strategy performance aggregation
@@ -183,5 +185,5 @@ func TestStrategyPerformanceRepository(t *testing.T) {
 	// }
 
 	// t.Logf("retrieved %d daily performance records", len(dailyPerformance))
-	t.Skip("Integration test - requires database setup")
+	t.Skip(skipIntegrationMsg)
 }

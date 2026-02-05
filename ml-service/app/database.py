@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -20,13 +21,13 @@ SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSe
 
 
 @asynccontextmanager
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with SessionLocal() as session:
         yield session
 
 
 @asynccontextmanager
-async def get_session(engine_instance):
+async def get_session(engine_instance) -> AsyncGenerator[AsyncSession, None]:
     """Get async session for gRPC servicer dependency injection."""
     async with async_sessionmaker(bind=engine_instance, expire_on_commit=False)() as session:
         yield session
